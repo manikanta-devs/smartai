@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  username      String         @unique
+  passwordHash  String
+  firstName     String?
+  lastName      String?
+  avatar        String?
+  role          String         @default("FREE")
+  isVerified    Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  refreshTokens RefreshToken[]
+  resumes       Resume[]
+  applications  Application[]
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Resume {
+  id                String         @id @default(uuid())
+  userId            String
+  fileName          String
+  fileUrl           String?
+  fileSize          Int
+  text              String
+  status            String         @default("PENDING")
+  parsedData        String?
+  analysisResult    String?
+  atsScore          Int?
+  overallScore      Int?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Job {
+  id            String       @id @default(uuid())
+  title         String
+  company       String
+  location      String
+  description   String
+  requirements  String
+  salary        String?
+  type          String
+  url           String?
+  createdAt     DateTime     @default(now())
+  applications  Application[]
+}
+
+model Application {
+  id        String   @id @default(uuid())
+  userId    String
+  jobId     String
+  status    String   @default("APPLIED")
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobId])
+  @@index([userId])
+}

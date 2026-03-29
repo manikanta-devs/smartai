@@ -1,0 +1,19 @@
+{
+  "name": "resume-saas",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @resume-saas/backend",
+    "dev:backend": "npm run dev -w @resume-saas/backend",
+    "dev:frontend": "npm run dev -w @resume-saas/frontend",
+    "build": "npm run build -ws",
+    "test": "npm run test -w @resume-saas/backend",
+    "lint": "npm run lint -ws"
+  },
+  "dependencies": {
+    "resume-saas": "file:"
+  }
+}
