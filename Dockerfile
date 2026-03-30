@@ -24,10 +24,7 @@ RUN echo "=== Checking dist folder ===" && ls -la dist/ 2>&1 || echo "=== No dis
 # Install ts-node for runtime execution (if dist wasn't created)
 RUN npm install --save-dev ts-node @types/node
 
-# Install OpenSSL 1.1 compatibility required by Prisma's query engine on Alpine
-RUN apk add --no-cache openssl-dev && cd /usr/lib && ln -s libssl.so libssl.so.1.1 && ln -s libcrypto.so libcrypto.so.1.1 && cd /app
-
-# Generate Prisma Client
+# Generate Prisma Client with the correct engine for Alpine + OpenSSL 3.0
 RUN npx prisma generate
 
 # Environment setup
