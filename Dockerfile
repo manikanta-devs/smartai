@@ -2,24 +2,33 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy all package files and source code
-COPY . .
+# Copy root package files
+COPY package*.json ./
 
-# Install ALL dependencies (including dev dependencies for build)
-RUN npm install --workspaces
+# Copy backend package and source
+COPY packages/backend ./packages/backend
 
-# Build ALL workspaces (this builds shared first, then dependencies)
-RUN echo "Building all packages..." && npm run build -ws && echo "✓ Build complete"
+# Copy shared package (if backend depends on it)
+COPY packages/shared ./packages/shared 2>/dev/null || true
 
-# Verify dist was created
-RUN test -f /app/packages/backend/dist/server.js && echo "✓ dist/server.js verified" || (echo "✗ ERROR: dist/server.js not found" && find /app -name "server.js" -type f 2>/dev/null || echo "No server.js found anywhere")
+# Install dependencies
+RUN npm install
+
+# Install backend dependencies specifically
+WORKDIR /app/packages/backend
+RUN npm install
+
+# Build backend
+RUN tsc -p tsconfig.json
+
+# Verify dist was created before continuing
+RUN if [ ! -f dist/server.js ]; then echo "ERROR: Build failed, dist/server.js not created" && ls -la . && exit 1; fi
 
 # Generate Prisma Client
 RUN npx prisma generate
 
 # Environment setup
 ENV NODE_ENV=production
-WORKDIR /app/packages/backend
 
 # Expose port
 EXPOSE 5000
@@ -28,5 +37,5 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:5000', (r) => {if (r.statusCode !== 404) throw new Error(r.statusCode)})" || exit 1
 
-# Start application directly with node
-CMD ["node", "/app/packages/backend/dist/server.js"]
+# Start application
+CMD ["node", "dist/server.js"]
