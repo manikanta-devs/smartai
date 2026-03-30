@@ -19,12 +19,9 @@ RUN npm run build
 # Generate Prisma Client
 RUN npx prisma generate
 
-# Clean up - remove dev dependencies to reduce image size
-WORKDIR /app
-RUN npm ci --omit=dev -w @resume-saas/backend
-
 # Environment setup
 ENV NODE_ENV=production
+WORKDIR /app/packages/backend
 
 # Expose port
 EXPOSE 5000
@@ -33,5 +30,5 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:5000', (r) => {if (r.statusCode !== 404) throw new Error(r.statusCode)})" || exit 1
 
-# Start application
-CMD ["npm", "start"]
+# Start application directly with node (bypass npm to avoid script lookup)
+CMD ["node", "/app/packages/backend/dist/server.js"]
