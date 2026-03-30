@@ -116,7 +116,7 @@ export async function getResumeVersions(resumeId: string) {
   });
 
   // Add score changes
-  const versionsWithChanges = versions.map((v, i) => ({
+  const versionsWithChanges = versions.map((v: any, i: number) => ({
     ...v,
     scoreChange: i > 0 ? v.overallScore - versions[i - 1].overallScore : 0,
   }));

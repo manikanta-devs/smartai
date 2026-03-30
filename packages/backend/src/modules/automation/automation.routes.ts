@@ -287,7 +287,7 @@ router.get(
         })),
         month: currentMonth,
         totalSkills: trends.length,
-        topSkills: trends.slice(0, 5).map(t => t.skill)
+        topSkills: trends.slice(0, 5).map((t: any) => t.skill)
       })
     );
   })

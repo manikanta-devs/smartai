@@ -324,7 +324,7 @@ export async function getApplicationStats(userId: string): Promise<ApplicationSt
     let totalResponseTime = 0;
     let respondedCount = 0;
 
-    apps.forEach((app) => {
+    apps.forEach((app: any) => {
       statusBreakdown[app.status as ApplicationStatus]++;
 
       if (app.interviews.length > 0) {

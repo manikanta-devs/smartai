@@ -215,7 +215,7 @@ export async function getDailyTasksStatus(userId: string) {
     },
   });
 
-  const completedIds = completedTasks.map((t) => t.taskId);
+  const completedIds = completedTasks.map((t: any) => t.taskId);
 
   return DAILY_TASKS.map((task) => ({
     ...task,
