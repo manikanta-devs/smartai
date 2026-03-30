@@ -1,0 +1,9 @@
+{
+  "workDir": "packages/backend",
+  "buildCommand": "npm run build",
+  "startCommand": "npm start",
+  "envs": {
+    "NODE_ENV": "production",
+    "PORT": "5000"
+  }
+}

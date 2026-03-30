@@ -1,0 +1,17 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+.env
+.env.local
+.env.*.local
+.vscode
+.DS_Store
+dist
+build
+.next
+out
+coverage
+.nyc_output
+*.tsbuildinfo
+.turbo
