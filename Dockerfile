@@ -39,15 +39,13 @@ COPY packages/backend/prisma ./packages/backend/prisma
 # Install production dependencies ONLY
 RUN npm ci --omit=dev --workspaces 2>&1 || npm install --omit=dev --workspaces
 
-# Generate Prisma Client
+# Copy built backend and frontend artifacts FIRST (while WORKDIR is /app)
+COPY --from=builder /app/packages/backend/dist ./packages/backend/dist
+COPY --from=builder /app/packages/frontend/dist ./packages/frontend/dist
+
+# NOW generate Prisma Client
 WORKDIR /app/packages/backend
 RUN npx prisma generate
-
-# Copy built backend artifacts from builder stage
-COPY --from=builder /app/packages/backend/dist /app/packages/backend/dist
-
-# Copy built frontend artifacts from builder stage  
-COPY --from=builder /app/packages/frontend/dist /app/packages/frontend/dist
 
 # Set production environment
 ENV NODE_ENV=production
