@@ -24,7 +24,7 @@ RUN echo "=== Checking dist folder ===" && ls -la dist/ 2>&1 || echo "=== No dis
 # Install ts-node for runtime execution (if dist wasn't created)
 RUN npm install --save-dev ts-node @types/node
 
-# Generate Prisma Client
+# Generate Prisma Client with the correct engine for Alpine + OpenSSL 3.0
 RUN npx prisma generate
 
 # Environment setup
