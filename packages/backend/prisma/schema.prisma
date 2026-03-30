@@ -243,8 +243,8 @@ model DailyTask {
   taskId      String
   points      Int
   completedAt DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  streak      UserStreak @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade, map: "DailyTask_userId_User_fkey")
+  streak      UserStreak @relation(fields: [userId], references: [userId], onDelete: Cascade, map: "DailyTask_userId_UserStreak_fkey")
 
   @@unique([userId, taskId, completedAt])
   @@index([userId])
