@@ -26,7 +26,7 @@ RUN npm run build
 WORKDIR /app/packages/frontend
 RUN npm run build
 
-# Production stage
+# Production stage (v2)
 FROM node:20-alpine
 
 WORKDIR /app
