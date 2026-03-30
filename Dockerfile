@@ -15,8 +15,11 @@ RUN npm install --workspaces
 # Copy source code
 COPY . .
 
-# Build backend
+# Generate Prisma client
 WORKDIR /app/packages/backend
+RUN npx prisma generate
+
+# Build backend
 RUN npm run build
 
 # Build frontend
@@ -35,12 +38,12 @@ COPY packages/backend/prisma ./packages/backend/prisma
 
 RUN npm ci --omit=dev --workspaces
 
-# Copy built backend
-COPY --from=builder /app/packages/backend/dist ./packages/backend/dist
+# Generate Prisma client in production stage
+WORKDIR /app/packages/backend
+RUN npx prisma generate
 
-# Copy Prisma client
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/packages/backend/node_modules/@prisma ./packages/backend/node_modules/@prisma
+# Copy built backend
+COPY --from=builder /app/packages/backend/dist ./dist
 
 # Set environment
 ENV NODE_ENV=production
