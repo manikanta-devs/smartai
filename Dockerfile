@@ -1,49 +1,22 @@
-# Build stage
-FROM node:20-alpine AS builder
-
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-COPY packages/backend/package*.json ./packages/backend/
-COPY packages/frontend/package*.json ./packages/frontend/
-COPY packages/shared/package*.json ./packages/shared/
-
-# Install dependencies
-RUN npm install --workspaces
-
-# Copy source code
-COPY . .
-
-# Generate Prisma client
-WORKDIR /app/packages/backend
-RUN npx prisma generate
-
-# Build backend
-RUN npm run build
-
-# Build frontend (optional - don't fail if this fails)
-WORKDIR /app/packages/frontend
-RUN npm run build || echo "Frontend build skipped or failed"
-
-# Production stage (v3)
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package files
+# Copy all package files
 COPY package*.json ./
 COPY packages/backend/package*.json ./packages/backend/
 COPY packages/backend/prisma ./packages/backend/prisma
+COPY packages/backend/src ./packages/backend/src
+COPY packages/backend/tsconfig.json ./packages/backend/tsconfig.json
 
-# Install production dependencies
-RUN npm ci --omit=dev -w @resume-saas/backend 2>&1 || npm install --omit=dev -w @resume-saas/backend
+# Install dependencies
+RUN npm ci --omit=dev -w @resume-saas/backend
 
-# Copy built backend
-COPY --from=builder /app/packages/backend/dist /app/packages/backend/dist
-
-# Generate Prisma Client in production
+# Build backend in production
 WORKDIR /app/packages/backend
+RUN npx tsc -p tsconfig.json
+
+# Generate Prisma Client
 RUN npx prisma generate
 
 # Environment setup
