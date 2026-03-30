@@ -145,7 +145,7 @@ export async function coachChat(
     const context = await buildUserContext(userId);
 
     // Build conversation history for AI
-    const messageHistory = conversation.messages.map((msg) => ({
+    const messageHistory = conversation.messages.map((msg: any) => ({
       role: msg.role as "user" | "assistant",
       parts: [{ text: msg.content }],
     }));
@@ -230,7 +230,7 @@ export async function getConversationHistory(
     orderBy: { createdAt: "asc" },
   });
 
-  return messages.map((msg) => ({
+  return messages.map((msg: any) => ({
     role: msg.role as "user" | "assistant",
     content: msg.content,
     timestamp: msg.createdAt,
@@ -252,7 +252,7 @@ export async function getUserConversations(userId: string) {
     },
   });
 
-  return conversations.map((conv) => ({
+  return conversations.map((conv: any) => ({
     id: conv.id,
     createdAt: conv.createdAt,
     lastMessage: conv.messages[0]?.content || "",

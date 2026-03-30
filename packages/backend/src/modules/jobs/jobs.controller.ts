@@ -64,14 +64,14 @@ export const getJobs = async (req: Request, res: Response, next: NextFunction) =
     if (search) {
       const q = (search as string).toLowerCase();
       jobs = jobs.filter(
-        (j) =>
+        (j: any) =>
           j.title.toLowerCase().includes(q) || j.company.toLowerCase().includes(q) || j.description.toLowerCase().includes(q)
       );
     }
 
     if (location) {
       const q = (location as string).toLowerCase();
-      jobs = jobs.filter((j) => j.location.toLowerCase().includes(q));
+      jobs = jobs.filter((j: any) => j.location.toLowerCase().includes(q));
     }
 
     res.json({ success: true, data: jobs });
@@ -108,7 +108,7 @@ export const searchJobs = async (req: Request, res: Response, next: NextFunction
 
       const q = role.toLowerCase();
       const filtered = dbJobs.filter(
-        (j) =>
+        (j: any) =>
           j.title.toLowerCase().includes(q) ||
           j.description.toLowerCase().includes(q)
       );

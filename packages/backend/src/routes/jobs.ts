@@ -220,11 +220,11 @@ router.get('/applications', authenticateToken, async (req: Request, res: Respons
 
     const statsSummary = {
       total,
-      applied: stats.find(s => s.status === 'APPLIED')?._count || 0,
-      shortlisted: stats.find(s => s.status === 'SHORTLISTED')?._count || 0,
-      interviews: stats.find(s => s.status === 'INTERVIEW')?._count || 0,
-      offers: stats.find(s => s.status === 'OFFER')?._count || 0,
-      rejected: stats.find(s => s.status === 'REJECTED')?._count || 0,
+      applied: stats.find((s: any) => s.status === 'APPLIED')?._count || 0,
+      shortlisted: stats.find((s: any) => s.status === 'SHORTLISTED')?._count || 0,
+      interviews: stats.find((s: any) => s.status === 'INTERVIEW')?._count || 0,
+      offers: stats.find((s: any) => s.status === 'OFFER')?._count || 0,
+      rejected: stats.find((s: any) => s.status === 'REJECTED')?._count || 0,
     };
 
     res.json({

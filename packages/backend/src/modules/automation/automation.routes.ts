@@ -124,11 +124,11 @@ router.get(
         summary: {
           totalRolesAnalyzed: Object.keys(grouped).length,
           averageGapPercentage: Math.round(
-            Object.values(grouped).reduce((sum, g) => sum + (g.gapPercentage || 0), 0) /
+            Object.values(grouped).reduce((sum: number, g: any) => sum + (g.gapPercentage || 0), 0) /
               Object.keys(grouped).length
           ),
           topMissingSkills: Array.from(
-            new Set(Object.values(grouped).flatMap(g => {
+            new Set(Object.values(grouped).flatMap((g: any) => {
               try {
                 return JSON.parse(g.missingSkills || "[]");
               } catch {
@@ -162,7 +162,7 @@ router.get(
 
     return res.json(
       createSuccessResponse({
-        alerts: alerts.map(alert => ({
+        alerts: alerts.map((alert: any) => ({
           id: alert.id,
           resumeId: alert.resumeId,
           issues: alert.issues,
@@ -242,7 +242,7 @@ router.get(
 
     return res.json(
       createSuccessResponse({
-        jobs: recommendedJobs.map(n => ({
+        jobs: recommendedJobs.map((n: any) => ({
           id: n.jobId,
           title: n.jobTitle,
           company: n.company,
@@ -279,7 +279,7 @@ router.get(
 
     return res.json(
       createSuccessResponse({
-        skills: trends.map(t => ({
+        skills: trends.map((t: any) => ({
           skill: t.skill,
           demandCount: t.demandCount,
           salaryAverage: t.salaryAverage,
@@ -330,7 +330,7 @@ router.get(
 
     // Calculate average skill gap %
     const avgGapPercentage = skillGaps.length > 0
-      ? Math.round(skillGaps.reduce((sum, g) => sum + (Number(g.gapPercentage) || 0), 0) / skillGaps.length)
+      ? Math.round(skillGaps.reduce((sum: number, g: any) => sum + (Number(g.gapPercentage) || 0), 0) / skillGaps.length)
       : 0;
 
     return res.json(
