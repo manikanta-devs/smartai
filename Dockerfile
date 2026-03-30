@@ -8,12 +8,11 @@ COPY . .
 # Install ALL dependencies (including dev dependencies for build)
 RUN npm install --workspaces
 
-# Build backend in the workspace context
-WORKDIR /app/packages/backend
-RUN echo "Building backend..." && npm run build && echo "Build complete" && ls -la dist/ || (echo "Build failed or dist not found" && ls -laR /app/packages/backend/)
+# Build ALL workspaces (this builds shared first, then dependencies)
+RUN echo "Building all packages..." && npm run build -ws && echo "✓ Build complete"
 
 # Verify dist was created
-RUN test -f /app/packages/backend/dist/server.js && echo "✓ dist/server.js verified" || (echo "✗ ERROR: dist/server.js not created" && find /app -name "server.js" -type f)
+RUN test -f /app/packages/backend/dist/server.js && echo "✓ dist/server.js verified" || (echo "✗ ERROR: dist/server.js not found" && find /app -name "server.js" -type f 2>/dev/null || echo "No server.js found anywhere")
 
 # Generate Prisma Client
 RUN npx prisma generate
