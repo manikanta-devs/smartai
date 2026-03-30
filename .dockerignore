@@ -7,10 +7,6 @@ npm-debug.log
 .env.*.local
 .vscode
 .DS_Store
-dist
-build
-.next
-out
 coverage
 .nyc_output
 *.tsbuildinfo

@@ -10,10 +10,10 @@ RUN npm install --workspaces
 
 # Build backend in the workspace context
 WORKDIR /app/packages/backend
-RUN npm run build
+RUN echo "Building backend..." && npm run build && echo "Build complete" && ls -la dist/ || (echo "Build failed or dist not found" && ls -laR /app/packages/backend/)
 
 # Verify dist was created
-RUN test -f /app/packages/backend/dist/server.js || (echo "ERROR: dist/server.js not created" && ls -la /app/packages/backend/dist/)
+RUN test -f /app/packages/backend/dist/server.js && echo "✓ dist/server.js verified" || (echo "✗ ERROR: dist/server.js not created" && find /app -name "server.js" -type f)
 
 # Generate Prisma Client
 RUN npx prisma generate
