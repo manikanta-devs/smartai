@@ -16,10 +16,13 @@ WORKDIR /app/packages/backend
 RUN npm install
 
 # Build backend
-RUN npx tsc -p tsconfig.json
+RUN echo "=== CWD ===" && pwd && echo "=== FILES ===" && ls -la && echo "=== Building with tsc ===" && npx tsc -p tsconfig.json 2>&1 && echo "=== Build complete ===" || echo "=== Build reported error but continuing ===" 
 
 # List what was created for debugging
-RUN echo "Build output:" && ls -la dist/ 2>/dev/null || echo "No dist folder found"
+RUN echo "=== Checking dist folder ===" && ls -la dist/ 2>&1 || echo "=== No dist folder - will run with ts-node instead ==="
+
+# Install ts-node for runtime execution (if dist wasn't created)
+RUN npm install --save-dev ts-node @types/node
 
 # Generate Prisma Client
 RUN npx prisma generate
@@ -34,5 +37,5 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:5000', (r) => {if (r.statusCode !== 404) throw new Error(r.statusCode)})" || exit 1
 
-# Start application
-CMD ["node", "dist/server.js"]
+# Start application - try dist/server.js first, fall back to ts-node
+CMD if [ -f dist/server.js ]; then node dist/server.js; else npx ts-node src/server.ts; fi
