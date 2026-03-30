@@ -1,3 +1,4 @@
+import axios from "axios";
 import { logger } from "../common/utils/logger";
 
 export interface JobListing {

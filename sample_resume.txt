@@ -1,0 +1,33 @@
+
+JOHN DEVELOPER
+john@example.com | (555) 123-4567 | https://linkedin.com/in/johndeveloper
+
+PROFESSIONAL SUMMARY
+Senior Software Engineer with 10+ years of experience building scalable full-stack applications.
+Expert in React, Node.js, TypeScript, AWS, and distributed systems architecture.
+
+EXPERIENCE
+Senior Software Engineer | TechCorp Inc | 2020 - Present
+• Led team of 8 engineers on microservices migration (30% performance improvement)
+• Architected real-time data processing system handling 1B+ events daily
+• Mentored junior developers, improved code quality scores by 40%
+
+Software Engineer | StartupXYZ | 2018 - 2020
+• Built React-based SPA with 500K+ monthly active users
+• Implemented automated testing suite (80% coverage)
+• Reduced API latency from 500ms to 50ms through optimization
+
+TECHNICAL SKILLS
+Languages: JavaScript, TypeScript, Python, SQL
+Frontend: React 18, Vue.js, Tailwind CSS
+Backend: Node.js, Express, FastAPI, Django
+Databases: PostgreSQL, MongoDB, Redis
+Cloud: AWS (EC2, S3, Lambda), Google Cloud Platform
+Tools: Docker, Kubernetes, GitHub Actions, Datadog
+
+EDUCATION
+B.S. Computer Science | University of California | 2014
+
+CERTIFICATIONS
+• AWS Solutions Architect Associate
+• Certified Kubernetes Application Developer
