@@ -42,9 +42,6 @@ RUN npm ci --omit=dev -w @resume-saas/backend 2>&1 || npm install --omit=dev -w 
 # Copy built backend
 COPY --from=builder /app/packages/backend/dist /app/packages/backend/dist
 
-# Frontend is optional
-COPY --from=builder /app/packages/frontend/dist /app/packages/frontend/dist 2>/dev/null || echo "Frontend not copied"
-
 # Generate Prisma Client in production
 WORKDIR /app/packages/backend
 RUN npx prisma generate
