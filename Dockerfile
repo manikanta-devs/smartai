@@ -38,16 +38,15 @@ COPY packages/backend/prisma ./packages/backend/prisma
 
 RUN npm ci --omit=dev --workspaces
 
-# Generate Prisma client in production stage
+# Copy built backend
+COPY --from=builder /app/packages/backend/dist ./packages/backend/dist
+
+# Generate Prisma client
 WORKDIR /app/packages/backend
 RUN npx prisma generate
 
-# Copy built backend
-COPY --from=builder /app/packages/backend/dist ./dist
-
 # Set environment
 ENV NODE_ENV=production
-WORKDIR /app/packages/backend
 
 # Expose port
 EXPOSE 5000
