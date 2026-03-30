@@ -1,4 +1,4 @@
-@import url('https://api.fontshare.com/v2/css?f[]=clash-display@700,600,500,400&f[]=satoshi@700,600,500,400,300&display=swap');
+@import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800,700,600,500,400&f[]=satoshi@700,600,500,400,300&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -11,7 +11,7 @@
 /* Premium Theme Fonts */
 @layer base {
   :root {
-    --font-clash: 'Clash Display', sans-serif;
+      --font-clash: 'Cabinet Grotesk', sans-serif;
     --font-satoshi: 'Satoshi', sans-serif;
   }
 }
@@ -106,25 +106,25 @@
 
 /* Base styles */
 body {
-  @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-50;
+  @apply bg-[#04050f] text-slate-100;
 }
 
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
-  @apply text-gray-900 dark:text-gray-50;
+  @apply text-white;
 }
 
 /* Form inputs - ensure text is always visible */
 input,
 textarea,
 select {
-  @apply text-gray-900 dark:text-gray-100;
-  color-scheme: light dark;
+  @apply text-slate-100;
+  color-scheme: dark;
 }
 
 input::placeholder,
 textarea::placeholder {
-  @apply text-gray-500 dark:text-gray-400;
+  @apply text-slate-500;
 }
 
 /* Autofill styles - prevent white text on white bg */
@@ -132,12 +132,12 @@ input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
 input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 30px white inset !important;
-  box-shadow: 0 0 0 30px white inset !important;
+  -webkit-box-shadow: 0 0 0 30px #04050f inset !important;
+  box-shadow: 0 0 0 30px #04050f inset !important;
 }
 
 input:-webkit-autofill {
-  -webkit-text-fill-color: #111827 !important;
+  -webkit-text-fill-color: #f8fafc !important;
 }
 
 /* Dark mode autofill */
@@ -145,7 +145,7 @@ input:-webkit-autofill {
   input:-webkit-autofill,
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus {
-    -webkit-box-shadow: 0 0 0 30px #111827 inset !important;
-    -webkit-text-fill-color: #f3f4f6 !important;
+    -webkit-box-shadow: 0 0 0 30px #04050f inset !important;
+    -webkit-text-fill-color: #f8fafc !important;
   }
 }

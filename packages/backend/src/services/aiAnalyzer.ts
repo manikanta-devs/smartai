@@ -1,6 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+// Local-only analysis helpers. No external AI calls.
 
 interface ResumeAnalysis {
   atsScore: number;
@@ -17,107 +15,13 @@ interface ResumeAnalysis {
 }
 
 export const analyzeResumeWithAI = async (resumeText: string): Promise<ResumeAnalysis> => {
-  try {
-    if (!process.env.GEMINI_API_KEY) {
-      console.warn("No GEMINI_API_KEY configured, using fallback analysis");
-      return fallbackAnalysis(resumeText);
-    }
-
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-
-    const analysisPrompt = `Analyze this resume and provide a detailed JSON assessment. Be specific and technical.
-
-Resume Text:
-${resumeText}
-
-Provide a JSON response with ONLY this exact structure (no markdown, no extra text):
-{
-  "atsScore": <number 0-100>,
-  "overallScore": <number 0-100>,
-  "contactScore": <number 0-25>,
-  "contactFeedback": "<string>",
-  "experienceScore": <number 0-25>,
-  "experienceFeedback": "<string>",
-  "educationScore": <number 0-25>,
-  "educationFeedback": "<string>",
-  "skillsScore": <number 0-25>,
-  "skillsFeedback": "<string>",
-  "formattingScore": <number 0-25>,
-  "formattingFeedback": "<string>",
-  "suggestions": ["<specific suggestion 1>", "<specific suggestion 2>", "<specific suggestion 3>"],
-  "keywords": ["<keyword1>", "<keyword2>", "<keyword3>", "<keyword4>", "<keyword5>"]
-}
-
-Guidelines:
-- ATS Score: 0-100 based on how well the resume passes ATS systems (scannable, standard fonts, proper spacing)
-- Overall Score: 0-100 based on content quality and professionalism
-- Contact Score: Check for email, phone, LinkedIn, location
-- Experience Score: Check for clear work history, achievements, metrics
-- Education Score: Check for degrees, institutions, GPA (if included)
-- Skills Score: Check for technical skills, proficiency levels, relevant keywords
-- Formatting Score: Check for clear structure, sections, readability, ATS-friendly format
-- Suggestions: Specific, actionable improvements
-- Keywords: Industry-relevant keywords the resume should include`;
-
-    const result = await model.generateContent(analysisPrompt);
-    const responseText = result.response.text();
-
-    // Extract JSON from response (handle markdown code blocks)
-    let jsonStr = responseText;
-    const jsonMatch = responseText.match(/```json\n?([\s\S]*?)\n?```/) || responseText.match(/({[\s\S]*})/);
-    if (jsonMatch) {
-      jsonStr = jsonMatch[1] || jsonMatch[0];
-    }
-
-    // Clean the JSON string
-    jsonStr = jsonStr
-      .replace(/```json\n?/g, "")
-      .replace(/```\n?/g, "")
-      .trim();
-
-    const parsed = JSON.parse(jsonStr);
-
-    return {
-      atsScore: Math.min(100, Math.max(0, parsed.atsScore || 0)),
-      overallScore: Math.min(100, Math.max(0, parsed.overallScore || 0)),
-      breakdown: {
-        contact: {
-          score: Math.min(25, Math.max(0, parsed.contactScore || 0)),
-          max: 25,
-          feedback: parsed.contactFeedback || "Contact information"
-        },
-        experience: {
-          score: Math.min(25, Math.max(0, parsed.experienceScore || 0)),
-          max: 25,
-          feedback: parsed.experienceFeedback || "Work experience"
-        },
-        education: {
-          score: Math.min(25, Math.max(0, parsed.educationScore || 0)),
-          max: 25,
-          feedback: parsed.educationFeedback || "Education details"
-        },
-        skills: {
-          score: Math.min(25, Math.max(0, parsed.skillsScore || 0)),
-          max: 25,
-          feedback: parsed.skillsFeedback || "Technical skills"
-        },
-        formatting: {
-          score: Math.min(25, Math.max(0, parsed.formattingScore || 0)),
-          max: 25,
-          feedback: parsed.formattingFeedback || "Resume formatting"
-        }
-      },
-      suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions.slice(0, 5) : [],
-      keywordRecommendations: Array.isArray(parsed.keywords) ? parsed.keywords.slice(0, 10) : []
-    };
-  } catch (error) {
-    console.error("AI Analysis failed:", error);
-    return fallbackAnalysis(resumeText);
-  }
+  return fallbackAnalysis(resumeText);
 };
 
 function fallbackAnalysis(text: string): ResumeAnalysis {
   // Comprehensive fallback analysis
+  const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
   const hasEmail = /[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(text);
   const hasPhone = /(\+?1?\s?[-.\(]?\d{3}[-.\)]?\s?\d{3}[-.\s]?\d{4})|(\(\d{3}\)\s*\d{3}[-.\s]*\d{4})/.test(text);
   const hasLinkedIn = /linkedin\.com|linkedin/i.test(text);
@@ -153,7 +57,7 @@ function fallbackAnalysis(text: string): ResumeAnalysis {
     "rest",
     "graphql"
   ];
-  const skillsFound = commonTechSkills.filter((skill) => new RegExp(`\\b${skill}\\b`, "i").test(text));
+  const skillsFound = commonTechSkills.filter((skill) => new RegExp(`\\b${escapeRegExp(skill)}\\b`, "i").test(text));
 
   const wordCount = text.split(/\s+/).length;
   const hasClearSections = /summary|objective|experience|education|skills|projects|certifications/i.test(text);

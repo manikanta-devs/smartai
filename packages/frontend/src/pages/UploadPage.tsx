@@ -1,56 +1,113 @@
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuthStore } from "../store/auth";
 import { Button } from "../components/Button";
-import { Header } from "../components/Header";
-import { Upload, FileText, ArrowLeft, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  CloudUpload,
+  ClipboardPaste,
+  FileText,
+  Link2,
+  Loader2,
+  Lock,
+  ScanSearch,
+  Sparkles,
+  Upload,
+  Wand2
+} from "lucide-react";
 import { toast } from "sonner";
 import api from "../lib/api";
-import { useState, useRef } from "react";
+
+const sampleResumeText = `Avery Chen
+Product-minded software engineer with 2.5 years of experience building TypeScript, React, and Node.js applications.
+Email: avery.chen@example.com | LinkedIn: linkedin.com/in/averychen | Remote, CA
+
+Experience
+- Built a resume analytics dashboard used by 2,000+ students, improving application completion by 31%.
+- Reduced resume parsing latency by 43% by refactoring the upload and extraction workflow.
+- Led a 4-person team to ship a job matching MVP in 6 weeks.
+
+Skills
+TypeScript, React, Node.js, Express, PostgreSQL, Prisma, Tailwind CSS, REST APIs, Product Design, AI workflows`;
+
+const uploadSteps = [
+  "Reading resume...",
+  "Extracting skills...",
+  "Calculating ATS score...",
+  "Finding job matches...",
+  "Generating insights..."
+];
+
+const supportedFormats = ["PDF", "DOCX", "DOC", "TXT"];
 
 export default function UploadPage() {
   const navigate = useNavigate();
-  const user = useAuthStore((s) => s.user);
   const [uploading, setUploading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const [activeMode, setActiveMode] = useState<"file" | "text" | "linkedin">("file");
+  const [resumeText, setResumeText] = useState("");
+  const [linkedinUrl, setLinkedinUrl] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [currentStep, setCurrentStep] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.[0]) return;
-    
-    const file = e.target.files[0];
-    
-    // Validate file size
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("File size must be less than 5MB");
+  useEffect(() => {
+    if (!uploading) {
+      setUploadProgress(0);
+      setCurrentStep(0);
       return;
     }
 
-    // Validate file type
+    const progressTimer = window.setInterval(() => {
+      setUploadProgress((current) => {
+        const next = Math.min(current + 20, 95);
+        setCurrentStep(Math.min(Math.floor(next / 20), uploadSteps.length - 1));
+        return next;
+      });
+    }, 700);
+
+    return () => window.clearInterval(progressTimer);
+  }, [uploading]);
+
+  const toUploadFile = (file: File) => {
     const validExtensions = [".pdf", ".doc", ".docx", ".txt"];
     const fileName = file.name.toLowerCase();
-    const isValidType = validExtensions.some(ext => fileName.endsWith(ext));
+    const isValidType = validExtensions.some((extension) => fileName.endsWith(extension));
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File size must be less than 5MB");
+      return null;
+    }
+
     if (!isValidType) {
       toast.error("Only PDF, DOC, DOCX, or TXT files are supported");
-      return;
+      return null;
     }
-    
+
+    return file;
+  };
+
+  const handleFileUpload = async (file: File) => {
+    const validFile = toUploadFile(file);
+    if (!validFile) return;
+
+    setSelectedFile(validFile);
     setUploading(true);
-    
+
     try {
       const formData = new FormData();
-      formData.append("file", file);
-      
-      console.log("Uploading file:", file.name);
-      const response = await api.post("/resumes/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" }
-      });
-      
-      console.log("Upload response:", response.data);
-      toast.success("Resume uploaded and analyzed successfully!");
-      
-      // Redirect to the uploaded resume detail page
-      const newResume = response.data.data;
-      setTimeout(() => {
-        navigate(`/resume/${newResume.id}`);
+      formData.append("file", validFile);
+
+      const response = await api.post("/resumes/upload", formData);
+      const uploadedResume = response.data?.data?.resume;
+      const automation = response.data?.data?.automation;
+
+      toast.success(automation ? "Resume uploaded and automation agent finished" : "Resume uploaded and analyzed successfully!");
+      setUploadProgress(100);
+
+      window.setTimeout(() => {
+        navigate(uploadedResume?.id ? `/resume/${uploadedResume.id}` : "/dashboard");
       }, 500);
     } catch (error: any) {
       console.error("Upload error:", error);
@@ -64,139 +121,354 @@ export default function UploadPage() {
     }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const buildFileFromText = (text: string, fileName: string) => {
+    return new File([text], fileName, { type: "text/plain" });
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const files = e.dataTransfer.files;
+  const handleAnalyze = async () => {
+    if (uploading) return;
+
+    if (activeMode === "file" && selectedFile) {
+      await handleFileUpload(selectedFile);
+      return;
+    }
+
+    if (activeMode === "text" && resumeText.trim()) {
+      await handleFileUpload(buildFileFromText(resumeText.trim(), "careeros-resume.txt"));
+      return;
+    }
+
+    if (activeMode === "linkedin") {
+      if (!linkedinUrl.trim()) {
+        toast.error("Paste a LinkedIn profile URL first");
+        return;
+      }
+
+      toast.message("LinkedIn import is not wired yet", {
+        description: "Paste your resume text or upload a file for full analysis."
+      });
+      return;
+    }
+
+    toast.error("Choose a resume file or paste text before analyzing");
+  };
+
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragActive(true);
+  };
+
+  const handleDragLeave = (event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragActive(false);
+  };
+
+  const handleDrop = async (event: React.DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragActive(false);
+
+    const files = event.dataTransfer.files;
     if (files.length > 0) {
-      const fakeEvent = {
-        target: { files }
-      } as unknown as React.ChangeEvent<HTMLInputElement>;
-      handleFileUpload(fakeEvent);
+      setActiveMode("file");
+      setSelectedFile(files[0]);
+      await handleFileUpload(files[0]);
     }
   };
 
+  const sampleSizeLabel = `${Math.max(Math.round(new Blob([resumeText || sampleResumeText]).size / 1024), 1)} KB`;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <Header />
-      
-      {/* Main Content */}
-      <div className="max-w-3xl mx-auto px-4 py-12">
-        {/* Back Button */}
+    <div className="space-y-8">
+      <main className="mx-auto flex max-w-7xl flex-col gap-8 px-0 py-0">
         <button
           onClick={() => navigate("/dashboard")}
-          className="flex items-center gap-2 text-blue-600 hover:text-blue-800 mb-8 font-medium"
+          className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Dashboard
         </button>
 
-        {/* Upload Card */}
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-8">
-            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-              <Upload className="h-8 w-8" />
-              Upload Your Resume
+        <section className="grid gap-6 lg:grid-cols-[1fr]">
+          <div className="rounded-[28px] border border-white/10 bg-white/5 p-8 shadow-2xl shadow-indigo-950/30 backdrop-blur-xl sm:p-10">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-200">
+              <Sparkles className="h-3.5 w-3.5" />
+              Resume upload
+            </div>
+            <h1 className="max-w-2xl text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
+              Upload your resume and get instant analysis.
             </h1>
-            <p className="text-blue-100 mt-2">Get instant AI analysis and ATS scoring</p>
-          </div>
+            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
+              Drop a resume, paste your experience, or use a LinkedIn URL as a starting point. You’ll see your selected file here, then the backend will generate the real analysis after upload.
+            </p>
 
-          {/* Upload Area */}
-          <div className="p-12">
+            <div className="mt-8 rounded-2xl border border-white/10 bg-[#0b0d18] p-5">
+              <div className="text-sm uppercase tracking-[0.24em] text-slate-400">Current state</div>
+              <div className="mt-2 text-lg font-semibold text-white">
+                {selectedFile ? selectedFile.name : "No resume selected yet"}
+              </div>
+              <p className="mt-2 text-sm leading-6 text-slate-400">
+                Upload a file or paste text to see the actual ATS score, improvements, and job-match signals from your resume.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+          <div className="rounded-[28px] border border-white/10 bg-white/5 p-6 shadow-xl shadow-indigo-950/20 backdrop-blur-xl sm:p-8">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm uppercase tracking-[0.24em] text-slate-400">Upload resume</p>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Drop your resume here</h2>
+              </div>
+              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                Max 5MB • Private by default
+              </div>
+            </div>
+
             <div
               onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              className="border-3 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-blue-400 hover:bg-blue-50 transition flex flex-col items-center justify-center cursor-pointer"
               onClick={() => fileInputRef.current?.click()}
+              className={`mt-6 cursor-pointer rounded-[24px] border-2 border-dashed p-6 text-center transition sm:p-10 ${dragActive ? "border-cyan-400 bg-cyan-400/10" : "border-white/15 bg-[#0b0d18] hover:border-indigo-400/50 hover:bg-white/5"}`}
             >
               <input
                 ref={fileInputRef}
                 type="file"
                 accept=".pdf,.doc,.docx,.txt"
-                onChange={handleFileUpload}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  setSelectedFile(file);
+                  setActiveMode("file");
+                }}
                 disabled={uploading}
                 className="hidden"
               />
-              
+
               {uploading ? (
-                <>
-                  <Loader2 className="h-16 w-16 text-blue-600 mx-auto mb-4 animate-spin" />
-                  <p className="text-lg font-semibold text-gray-900">Processing your resume...</p>
-                  <p className="text-sm text-gray-600 mt-2">This may take a few moments</p>
-                </>
+                <div className="mx-auto flex max-w-xl flex-col items-center">
+                  <Loader2 className="h-14 w-14 animate-spin text-cyan-300" />
+                  <h3 className="mt-5 text-2xl font-semibold text-white">Analyzing your resume</h3>
+                  <p className="mt-2 text-slate-400">This usually takes a few seconds.</p>
+
+                  <div className="mt-8 w-full">
+                    <div className="mb-3 flex items-center justify-between text-sm text-slate-400">
+                      <span>{uploadSteps[currentStep]}</span>
+                      <span>{uploadProgress}%</span>
+                    </div>
+                    <div className="h-3 overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-cyan-400 to-emerald-400 transition-all duration-500"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                      {uploadSteps.map((step, index) => (
+                        <div
+                          key={step}
+                          className={`flex items-center gap-2 rounded-2xl border px-3 py-2 text-sm ${index <= currentStep ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-100" : "border-white/10 bg-white/5 text-slate-400"}`}
+                        >
+                          <CheckCircle2 className={`h-4 w-4 ${index <= currentStep ? "text-emerald-300" : "text-slate-500"}`} />
+                          {step}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               ) : (
-                <>
-                  <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <p className="text-xl font-semibold text-gray-900 mb-2">
-                    Drag and drop your resume here
-                  </p>
-                  <p className="text-gray-600 mb-4">or click to browse files</p>
-                  <p className="text-sm text-gray-500">
-                    Supported formats: PDF, DOC, DOCX, TXT (Max 5MB)
-                  </p>
-                </>
+                <div className="mx-auto flex max-w-xl flex-col items-center">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-full border border-indigo-400/20 bg-indigo-400/10">
+                    <CloudUpload className="h-9 w-9 text-indigo-200" />
+                  </div>
+                  <h3 className="mt-5 text-2xl font-semibold text-white">{selectedFile ? selectedFile.name : "Drop your resume here"}</h3>
+                  <p className="mt-2 text-slate-400">PDF, DOC, DOCX, TXT • drag and drop or click to browse</p>
+
+                  {selectedFile ? (
+                    <div className="mt-6 flex w-full max-w-lg items-center justify-between rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-left">
+                      <div>
+                        <div className="font-medium text-emerald-100">Selected file</div>
+                        <div className="text-sm text-emerald-200/80">{selectedFile.name} • {Math.max(Math.round(selectedFile.size / 1024), 1)} KB</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setSelectedFile(null);
+                          if (fileInputRef.current) {
+                            fileInputRef.current.value = "";
+                          }
+                        }}
+                        className="rounded-full border border-emerald-400/20 px-3 py-1 text-sm text-emerald-100 hover:bg-emerald-400/10"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : null}
+
+                  <div className="mt-6 flex flex-wrap items-center justify-center gap-2 text-xs text-slate-400">
+                    {supportedFormats.map((format) => (
+                      <span key={format} className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-300" />
+                        {format}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
 
-            {/* Features */}
-            <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center">
-                <div className="bg-blue-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-blue-600 font-bold text-lg">⚡</span>
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-1">Instant Analysis</h3>
-                <p className="text-sm text-gray-600">Get AI-powered resume analysis in seconds</p>
-              </div>
+            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+              {[
+                { label: "File upload", value: "PDF / DOC / DOCX / TXT", active: activeMode === "file", icon: FileText },
+                { label: "Paste text", value: "Quick copy-paste analysis", active: activeMode === "text", icon: ClipboardPaste },
+                { label: "LinkedIn URL", value: "Profile URL starter", active: activeMode === "linkedin", icon: Link2 }
+              ].map(({ label, value, active, icon: Icon }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => setActiveMode(label === "File upload" ? "file" : label === "Paste text" ? "text" : "linkedin")}
+                  className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition ${active ? "border-cyan-400/30 bg-cyan-400/10" : "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10"}`}
+                >
+                  <Icon className={`mt-0.5 h-5 w-5 ${active ? "text-cyan-200" : "text-slate-400"}`} />
+                  <div>
+                    <div className="font-medium text-white">{label}</div>
+                    <div className="text-sm text-slate-400">{value}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
 
-              <div className="text-center">
-                <div className="bg-green-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-green-600 font-bold text-lg">📊</span>
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-1">ATS Scoring</h3>
-                <p className="text-sm text-gray-600">Optimize for applicant tracking systems</p>
+            {activeMode !== "file" ? (
+              <div className="mt-6 rounded-[24px] border border-white/10 bg-[#0b0d18] p-5">
+                {activeMode === "text" ? (
+                  <>
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-lg font-semibold text-white">Paste resume text</h3>
+                        <p className="text-sm text-slate-400">Use a clean export or paste the content directly.</p>
+                      </div>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">{sampleSizeLabel}</span>
+                    </div>
+                    <textarea
+                      value={resumeText}
+                      onChange={(event) => setResumeText(event.target.value)}
+                      placeholder="Paste your resume, project summary, skills, and experience here..."
+                      className="min-h-[220px] w-full rounded-2xl border border-white/10 bg-[#04050f] px-4 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-cyan-400/50"
+                    />
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <Button onClick={handleAnalyze} disabled={uploading} className="bg-gradient-to-r from-indigo-500 to-cyan-500 text-white hover:from-indigo-400 hover:to-cyan-400">
+                        <Wand2 className="mr-2 h-4 w-4" />
+                        Analyze My Resume
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setResumeText(sampleResumeText);
+                          toast.success("Sample resume loaded");
+                        }}
+                      >
+                        Try sample resume
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="mb-3">
+                      <h3 className="text-lg font-semibold text-white">LinkedIn URL</h3>
+                      <p className="text-sm text-slate-400">This is ready for a future profile import flow. For now, paste resume text to analyze immediately.</p>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+                      <input
+                        value={linkedinUrl}
+                        onChange={(event) => setLinkedinUrl(event.target.value)}
+                        placeholder="https://www.linkedin.com/in/your-profile"
+                        className="h-12 rounded-2xl border border-white/10 bg-[#04050f] px-4 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-cyan-400/50"
+                      />
+                      <Button variant="outline" onClick={handleAnalyze} disabled={uploading}>
+                        Check URL
+                      </Button>
+                    </div>
+                  </>
+                )}
               </div>
+            ) : null}
 
-              <div className="text-center">
-                <div className="bg-purple-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <span className="text-purple-600 font-bold text-lg">💡</span>
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-1">Smart Tips</h3>
-                <p className="text-sm text-gray-600">Get personalized suggestions for improvement</p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button
+                size="lg"
+                onClick={handleAnalyze}
+                disabled={uploading}
+                className="bg-gradient-to-r from-indigo-500 via-violet-500 to-cyan-500 text-white shadow-lg shadow-indigo-950/40 hover:from-indigo-400 hover:via-violet-400 hover:to-cyan-400"
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Analyze My Resume
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={() => {
+                  setActiveMode("text");
+                  setResumeText(sampleResumeText);
+                  toast.success("Sample resume loaded");
+                }}
+              >
+                Try sample resume
+              </Button>
+              <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
+                <Lock className="h-4 w-4 text-emerald-300" />
+                Your file is analyzed in memory and not permanently stored by this page.
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Info Section */}
-        <div className="mt-8 bg-white rounded-lg shadow p-6">
-          <h3 className="font-semibold text-gray-900 mb-4">What happens next?</h3>
-          <ol className="space-y-3 text-gray-600">
-            <li className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">1</span>
-              <span>Upload your resume in PDF, DOC, DOCX, or TXT format</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">2</span>
-              <span>Our AI analyzes your resume for optimization</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">3</span>
-              <span>Get your ATS score and improvement recommendations</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">4</span>
-              <span>View detailed analysis and apply for matching jobs</span>
-            </li>
-          </ol>
-        </div>
-      </div>
+          <aside className="grid gap-6">
+            <div className="rounded-[28px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+              <div className="flex items-center gap-2 text-sm font-medium text-cyan-200">
+                <ScanSearch className="h-4 w-4" />
+                What happens next
+              </div>
+              <div className="mt-4 space-y-3">
+                {[
+                  "Upload a file or paste resume text.",
+                  "CareerOS extracts skills, impact, and keywords.",
+                  "You get an ATS score plus improvement ideas.",
+                  "Then jump into job matching and rewrites."
+                ].map((step, index) => (
+                  <div key={step} className="flex gap-3 rounded-2xl border border-white/10 bg-[#0b0d18] p-4">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-500/20 text-sm font-semibold text-indigo-100">
+                      {index + 1}
+                    </div>
+                    <p className="text-sm leading-6 text-slate-300">{step}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-[28px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+              <div className="flex items-center gap-2 text-sm font-medium text-emerald-200">
+                <CheckCircle2 className="h-4 w-4" />
+                Built for students
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                {[
+                  "Final year students",
+                  "CS / engineering",
+                  "Business / MBA",
+                  "Design / research"
+                ].map((item) => (
+                  <div key={item} className="rounded-2xl border border-white/10 bg-[#0b0d18] px-4 py-3 text-sm text-slate-300">
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </aside>
+        </section>
+      </main>
     </div>
   );
 }

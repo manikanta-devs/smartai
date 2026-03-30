@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Header } from "../components/Header";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
 import { Textarea } from "../components/Textarea";
@@ -103,37 +102,34 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Header />
+      <div className="space-y-8">
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-cyan-300" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-
-      <div className="max-w-3xl mx-auto px-4 py-8">
+    <div className="space-y-8">
+      <div className="max-w-3xl mx-auto px-0 py-0">
         {/* Header */}
         <div className="mb-8 flex items-center gap-3">
           <Button variant="outline" size="sm" onClick={() => navigate("/dashboard")}>
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
+          <h1 className="text-3xl font-bold text-white">My Profile</h1>
         </div>
 
         {/* Profile Form */}
         <div className="space-y-6">
           {/* Basic Info */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Basic Information</h2>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-2xl shadow-indigo-950/20">
+            <h2 className="text-xl font-semibold text-white mb-4">Basic Information</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-slate-300 mb-2">
                   <Mail className="w-4 h-4 inline mr-2" />
                   Email
                 </label>
@@ -142,13 +138,13 @@ export default function ProfilePage() {
                   value={profile.email}
                   onChange={(e) => setProfile({ ...profile, email: e.target.value })}
                   disabled
-                  className="bg-gray-100"
+                  className="bg-[#04050f]"
                 />
-                <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                <p className="text-xs text-slate-500 mt-1">Email cannot be changed</p>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-slate-300 mb-2">
                   Full Name
                 </label>
                 <Input
@@ -160,7 +156,7 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-slate-300 mb-2">
                   <Phone className="w-4 h-4 inline mr-2" />
                   Phone Number
                 </label>
@@ -173,7 +169,7 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-slate-300 mb-2">
                   <MapPin className="w-4 h-4 inline mr-2" />
                   Location
                 </label>
@@ -188,10 +184,10 @@ export default function ProfilePage() {
           </div>
 
           {/* Bio */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Professional Bio</h2>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-2xl shadow-indigo-950/20">
+            <h2 className="text-xl font-semibold text-white mb-4">Professional Bio</h2>
 
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-slate-300 mb-2">
               About You
             </label>
             <Textarea
@@ -203,15 +199,15 @@ export default function ProfilePage() {
           </div>
 
           {/* Social Links */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-2xl shadow-indigo-950/20">
+            <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
               <LinkIcon className="w-5 h-5" />
               Social & Portfolio Links
             </h2>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-slate-300 mb-2">
                   LinkedIn Profile
                 </label>
                 <Input
@@ -223,7 +219,7 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-slate-300 mb-2">
                   GitHub Profile
                 </label>
                 <Input
@@ -235,7 +231,7 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-slate-300 mb-2">
                   Portfolio Website
                 </label>
                 <Input
@@ -249,8 +245,8 @@ export default function ProfilePage() {
           </div>
 
           {/* Skills */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Professional Skills</h2>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-2xl shadow-indigo-950/20">
+            <h2 className="text-xl font-semibold text-white mb-4">Professional Skills</h2>
 
             <div className="mb-4">
               <label className="block text-sm font-semibold text-gray-700 mb-2">

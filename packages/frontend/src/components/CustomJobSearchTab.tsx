@@ -4,7 +4,7 @@ import { Button } from '@/components/Button';
 import { Textarea } from '@/components/Textarea';
 import { Input } from '@/components/Input';
 import { toast } from 'sonner';
-import { premiumAPI } from '@/lib/api';
+import api from '@/lib/api';
 
 interface JobSearchCriteria {
   mandatory_skills: string[];
@@ -112,14 +112,45 @@ export function CustomJobSearchTab({
         return;
       }
 
-      const response = await premiumAPI.post('/job-search-custom', {
-        userID: resumeId,
-        criteria,
+      const response = await api.post('/jobs/search', {
+        keywords: criteria.mandatory_skills.join(' ') || 'Software Engineer',
+        role: criteria.mandatory_skills.join(' ') || 'Software Engineer',
+        location: criteria.location_preferences[0] || 'Remote',
+        platforms: ['linkedin', 'indeed', 'github', 'remoteok']
       });
 
-      if (response.data.jobs && response.data.jobs.length > 0) {
-        setResults(response.data.jobs);
-        toast.success(`🎯 Found ${response.data.jobs.length} matching jobs!`);
+      const rawJobs = response.data?.data || response.data?.jobs || [];
+      const matches: JobResult[] = rawJobs.map((job: any, index: number) => {
+        const title = job.title || 'Open Role';
+        const description = job.description || '';
+        const lowerText = `${title} ${description}`.toLowerCase();
+        const mandatoryMatches = criteria.mandatory_skills.filter((skill) => lowerText.includes(skill.toLowerCase()));
+        const niceMatches = criteria.nice_to_have_skills.filter((skill) => lowerText.includes(skill.toLowerCase()));
+        const missingSkills = criteria.mandatory_skills.filter((skill) => !mandatoryMatches.includes(skill));
+        const relevance = Math.min(100, 55 + mandatoryMatches.length * 15 + niceMatches.length * 5 - index);
+
+        return {
+          id: job.id || `${index}-${title}`,
+          title,
+          company: job.company || 'Unknown Company',
+          location: job.location || criteria.location_preferences[0] || 'Remote',
+          salary_range: job.salary || undefined,
+          relevance_score: relevance,
+          matched_criteria: {
+            mandatory_matches: mandatoryMatches,
+            nice_to_have_matches: niceMatches,
+            missing_skills: missingSkills
+          },
+          description,
+          why_great_fit: mandatoryMatches.length > 0
+            ? `Matches ${mandatoryMatches.join(', ')}`
+            : 'Relevant to your target role'
+        };
+      }).filter((job: JobResult) => job.relevance_score >= 50);
+
+      if (matches.length > 0) {
+        setResults(matches.slice(0, 12));
+        toast.success(`🎯 Found ${matches.length} matching jobs!`);
       } else {
         setResults([]);
         toast.info('No jobs matched your criteria');

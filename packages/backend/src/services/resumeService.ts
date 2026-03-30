@@ -277,28 +277,43 @@ export const generateResumePDF = (html: string, fileName: string = "resume.pdf")
 export const parseResumeToStructuredData = (resumeText: string): ResumeSectionData => {
   const data: ResumeSectionData = {};
 
+  // Initialize contact info
+  data.contactInfo = {};
+
   // Extract name (typically at the beginning)
   const nameMatch = resumeText.match(/^([A-Z][A-Za-z\s]+)/m);
   if (nameMatch) {
-    data.contactInfo = { name: nameMatch[1].trim() };
+    data.contactInfo.name = nameMatch[1].trim();
   }
 
   // Extract email
   const emailMatch = resumeText.match(/([a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
-  if (emailMatch && data.contactInfo) {
+  if (emailMatch) {
     data.contactInfo.email = emailMatch[1];
   }
 
   // Extract phone
   const phoneMatch = resumeText.match(/(\+?1?\s?[-.\(]?\d{3}[-.\)]?\s?\d{3}[-.\s]?\d{4})/);
-  if (phoneMatch && data.contactInfo) {
+  if (phoneMatch) {
     data.contactInfo.phone = phoneMatch[1];
   }
 
   // Extract location
   const locationMatch = resumeText.match(/(New York|San Francisco|Los Angeles|Chicago|Boston|Seattle|Austin|Denver|Portland|Remote|[A-Za-z]+,\s*[A-Z]{2})/i);
-  if (locationMatch && data.contactInfo) {
+  if (locationMatch) {
     data.contactInfo.location = locationMatch[1];
+  }
+
+  // Extract LinkedIn
+  const linkedinMatch = resumeText.match(/linkedin\.com\/in\/([a-zA-Z0-9-]+)/i);
+  if (linkedinMatch) {
+    data.contactInfo.linkedin = `https://linkedin.com/in/${linkedinMatch[1]}`;
+  }
+
+  // Extract GitHub
+  const githubMatch = resumeText.match(/github\.com\/([a-zA-Z0-9-]+)/i);
+  if (githubMatch) {
+    data.contactInfo.github = `https://github.com/${githubMatch[1]}`;
   }
 
   // Extract summary (usually a paragraph after contact info)
@@ -311,7 +326,7 @@ export const parseResumeToStructuredData = (resumeText: string): ResumeSectionDa
 
   // Extract skills
   const skillsMatch = resumeText.match(
-    /(?:skills?|technical\s+skills?)[\s\n]+([\s\S]{20,500}?)(?=\n\n|experience|education|$)/i
+    /(?:skills?|technical\s+skills?)[\s\n]+([\s\S]{20,500}?)(?=\n\n|experience|education|certification|$)/i
   );
   if (skillsMatch) {
     const skillsText = skillsMatch[1];
@@ -319,6 +334,89 @@ export const parseResumeToStructuredData = (resumeText: string): ResumeSectionDa
       .split(/[,\n]/)
       .map((s) => s.trim())
       .filter((s) => s.length > 1 && s.length < 50);
+  }
+
+  // Extract experience
+  const experienceMatch = resumeText.match(
+    /(?:professional\s+experience|work\s+history|experience|employment)[\s\n]+([\s\S]{50,2000}?)(?=\n\n|education|certification|skills|$)/i
+  );
+  if (experienceMatch) {
+    const expText = experienceMatch[1];
+    // Split by likely job entry patterns (dates, company names in caps, etc.)
+    const jobEntries = expText.split(/\n(?=[A-Z])/);
+    data.experience = [];
+    
+    jobEntries.forEach((entry) => {
+      const trimmed = entry.trim();
+      if (trimmed.length > 20) {
+        // Try to extract position and company
+        const positionMatch = trimmed.match(/^([A-Za-z\s]+)\s*(?:at|,)/i);
+        const companyMatch = trimmed.match(/(?:at|,|\|)\s*([A-Za-z\s&.,]+?)(?:\n|$)/i);
+        const dateMatch = trimmed.match(/(\d{1,2}\/\d{1,2}\/\d{4}|\d{4}\s*-\s*\d{4}|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/);
+        
+        if (positionMatch || companyMatch) {
+          data.experience!.push({
+            position: positionMatch?.[1]?.trim() || "Position",
+            company: companyMatch?.[1]?.trim() || "Company",
+            description: trimmed.substring(0, 150),
+            startDate: dateMatch?.[1] || "2020-01",
+            endDate: "Present"
+          });
+        }
+      }
+    });
+  }
+
+  // Extract education
+  const educationMatch = resumeText.match(
+    /(?:education|academic\s+background)[\s\n]+([\s\S]{50,1000}?)(?=\n\n|experience|certification|skills|$)/i
+  );
+  if (educationMatch) {
+    const eduText = educationMatch[1];
+    const eduEntries = eduText.split(/\n(?=[A-Z])/);
+    data.education = [];
+    
+    eduEntries.forEach((entry) => {
+      const trimmed = entry.trim();
+      if (trimmed.length > 10) {
+        const degreeMatch = trimmed.match(/(Bachelor|Master|Associate|PhD|Diploma|Certificate|BSc|MSc|BA|BS|MA|MS)/i);
+        const fieldMatch = trimmed.match(/(?:in|of)\s+([A-Za-z\s&]+?)(?:,|\n|$)/i);
+        const schoolMatch = trimmed.match(/(?:\n|,|\|)\s*([A-Za-z\s&.,'-]+?)(?:\n|$)/i);
+        const yearMatch = trimmed.match(/(\d{4})/);
+        
+        if (degreeMatch) {
+          data.education!.push({
+            degree: degreeMatch[1] || "Degree",
+            field: fieldMatch?.[1]?.trim() || "Field of Study",
+            school: schoolMatch?.[1]?.trim() || "Institution",
+            graduationDate: yearMatch?.[1] || "2020"
+          });
+        }
+      }
+    });
+  }
+
+  // Extract certifications
+  const certMatch = resumeText.match(
+    /(?:certification|certifications|credentials)[\s\n]+([\s\S]{20,500}?)(?=\n\n|experience|education|skills|$)/i
+  );
+  if (certMatch) {
+    const certText = certMatch[1];
+    const certEntries = certText.split(/\n/).filter((line) => line.trim().length > 5);
+    data.certifications = [];
+    
+    certEntries.forEach((entry) => {
+      const trimmed = entry.trim();
+      if (trimmed.length > 5) {
+        const dateMatch = trimmed.match(/(\d{1,2}\/\d{1,2}\/\d{4}|\d{4}|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/);
+        
+        data.certifications!.push({
+          name: trimmed.substring(0, 100),
+          issuer: "Issuer",
+          date: dateMatch?.[1] || "2020"
+        });
+      }
+    });
   }
 
   return data;

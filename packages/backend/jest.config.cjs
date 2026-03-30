@@ -5,5 +5,12 @@ module.exports = {
   setupFiles: ["<rootDir>/tests/setup-env.ts"],
   moduleFileExtensions: ["ts", "js"],
   clearMocks: true,
-  collectCoverageFrom: ["src/**/*.ts", "!src/server.ts"]
+  collectCoverageFrom: ["src/**/*.ts", "!src/server.ts"],
+  globals: {
+    "ts-jest": {
+      tsconfig: {
+        types: ["jest"]
+      }
+    }
+  }
 };

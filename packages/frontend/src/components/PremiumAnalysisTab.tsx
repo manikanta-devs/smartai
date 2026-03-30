@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Loader2, Sparkles, TrendingUp, Target, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { toast } from 'sonner';
-import { premiumAPI } from '@/lib/api';
+import api from '@/lib/api';
 
 interface PremiumScore {
   score: number;
@@ -63,14 +63,40 @@ export function PremiumAnalysisTab({ resumeId, resumeText, onAnalysisComplete }:
       setLoading(true);
       setError(null);
 
-      const response = await premiumAPI.post('/analyze-deep', {
-        resume_text: resumeText,
-        userID: resumeId,
-      });
+      const response = await api.post(`/resumes/${resumeId}/analyze`);
+      const payload = response.data?.data || {};
 
-      if (response.data.data) {
-        setAnalysis(response.data.data);
-        onAnalysisComplete?.(response.data.data);
+      const mappedAnalysis: PremiumAnalysis = {
+        personalInfo: {},
+        careerLevel: payload.overallScore >= 85 ? 'senior' : payload.overallScore >= 60 ? 'mid-level' : 'entry-level',
+        yearsOfExperience: 0,
+        scores: {
+          atsScore: payload.atsScore ?? payload.score ?? 0,
+          overallScore: payload.score ?? payload.atsScore ?? 0,
+          atsBreakdown: payload.breakdown || {},
+          scoreBreakdown: payload.breakdown || {},
+        },
+        suggestedJobTitles: (payload.keywordRecommendations || []).slice(0, 5).map((keyword: string) => ({
+          title: keyword,
+          matchScore: 60,
+        })),
+        strengths: [],
+        improvements: (payload.suggestions || []).map((suggestion: string) => ({
+          priority: 'medium',
+          area: 'Resume',
+          issue: suggestion,
+          recommendation: suggestion,
+          example: ''
+        })),
+        keywordAnalysis: {
+          currentKeywords: payload.keywordRecommendations || [],
+          missingCriticalKeywords: []
+        }
+      };
+
+      if (mappedAnalysis) {
+        setAnalysis(mappedAnalysis);
+        onAnalysisComplete?.(mappedAnalysis);
         toast.success('✨ Deep analysis complete!');
       }
     } catch (err: any) {

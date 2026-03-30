@@ -12,7 +12,7 @@ import UploadPage from "./pages/UploadPage";
 import JobsPage from "./pages/JobsPage";
 import ProfilePage from "./pages/ProfilePage";
 import { ResumeDetailPagePremium } from "./pages/ResumeDetailPagePremium";
-import ProtectedRoute from "./components/ProtectedRoute";
+import { WorkspaceShell } from "./components/WorkspaceShell";
 import { useAuthStore } from "./store/auth";
 
 function App() {
@@ -24,46 +24,13 @@ function App() {
         <Route path="/" element={!user ? <LandingPage /> : <Navigate to="/dashboard" replace />} />
         <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/dashboard" replace />} />
         <Route path="/register" element={!user ? <RegisterPage /> : <Navigate to="/dashboard" replace />} />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <IntegratedDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/upload"
-          element={
-            <ProtectedRoute>
-              <UploadPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/jobs"
-          element={
-            <ProtectedRoute>
-              <JobsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <ProfilePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/resume/:id"
-          element={
-            <ProtectedRoute>
-              <ResumeDetailPagePremium />
-            </ProtectedRoute>
-          }
-        />
+        <Route element={<WorkspaceShell />}>
+          <Route path="dashboard" element={<IntegratedDashboard />} />
+          <Route path="upload" element={<UploadPage />} />
+          <Route path="jobs" element={<JobsPage />} />
+          <Route path="profile" element={<ProfilePage />} />
+          <Route path="resume/:id" element={<ResumeDetailPagePremium />} />
+        </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toaster position="bottom-right" />

@@ -1,10 +1,10 @@
 import request from "supertest";
-import { app } from "../../src/app";
+import { jest, describe, expect, it } from "@jest/globals";
 
 jest.mock("../../src/modules/auth/auth.service", () => ({
-  registerUser: jest.fn(async (input) => ({
+  registerUser: jest.fn(async (input: { username: string }) => ({
     id: "u1",
-    email: input.email,
+    email: `${input.username}@resume.local`,
     username: input.username,
     role: "FREE"
   })),
@@ -17,16 +17,25 @@ jest.mock("../../src/modules/auth/auth.service", () => ({
   logoutUser: jest.fn(async () => undefined)
 }));
 
+const { app } = require("../../src/app");
+
 describe("Auth routes", () => {
-  it("returns 404 for disabled registration endpoint", async () => {
-    const response = await request(app).post("/api/auth/register").send({ email: "bad" });
-    expect(response.status).toBe(404);
-    expect(response.body.success).toBe(false);
+  it("registers a user", async () => {
+    const response = await request(app).post("/api/auth/register").send({
+      username: "john",
+      password: "Password123",
+      firstName: "John",
+      lastName: "Doe"
+    });
+
+    expect(response.status).toBe(201);
+    expect(response.body.data.username).toBe("john");
+    expect(response.body.data.email).toBe("john@resume.local");
   });
 
   it("logs in user", async () => {
     const response = await request(app).post("/api/auth/login").send({
-      email: "john@example.com",
+      identifier: "john",
       password: "Password123"
     });
 

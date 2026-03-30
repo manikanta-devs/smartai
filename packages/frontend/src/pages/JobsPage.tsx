@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Header } from "../components/Header";
 import { Button } from "../components/Button";
 import { Briefcase, ArrowLeft, ExternalLink, Filter } from "lucide-react";
 import { toast } from "sonner";
@@ -96,30 +95,28 @@ export default function JobsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-
-      <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="space-y-8">
+      <div className="max-w-6xl mx-auto px-0 py-0">
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Button variant="outline" size="sm" onClick={() => navigate("/dashboard")}>
               <ArrowLeft className="w-4 h-4" />
             </Button>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-              <Briefcase className="w-8 h-8 text-blue-600" />
+            <h1 className="text-3xl font-bold text-white flex items-center gap-2">
+              <Briefcase className="w-8 h-8 text-cyan-300" />
               Job Search
             </h1>
           </div>
         </div>
 
         {/* Search Form */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Find Your Next Opportunity</h2>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 mb-8 backdrop-blur-xl shadow-2xl shadow-indigo-950/20">
+          <h2 className="text-xl font-semibold text-white mb-4">Find Your Next Opportunity</h2>
 
           {/* Role Input */}
           <div className="mb-6">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-slate-300 mb-2">
               Job Role or Title
             </label>
             <input
@@ -127,7 +124,7 @@ export default function JobsPage() {
               value={role}
               onChange={(e) => setRole(e.target.value)}
               placeholder="e.g., Senior Full Stack Engineer, Product Manager, UX Designer"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-white/10 rounded-lg bg-[#04050f] text-slate-100 focus:ring-2 focus:ring-cyan-400 focus:border-transparent"
               onKeyPress={(e) => e.key === "Enter" && handleSearchJobs()}
             />
           </div>
@@ -135,8 +132,8 @@ export default function JobsPage() {
           {/* Platform Selection */}
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-3">
-              <Filter className="w-5 h-5 text-gray-600" />
-              <label className="text-sm font-semibold text-gray-700">
+              <Filter className="w-5 h-5 text-slate-400" />
+              <label className="text-sm font-semibold text-slate-300">
                 Search Platforms
               </label>
             </div>
@@ -145,15 +142,15 @@ export default function JobsPage() {
                 <button
                   key={platform.id}
                   onClick={() => togglePlatform(platform.id)}
-                  className={`p-3 rounded-lg border-2 transition text-left ${
+                  className={`p-3 rounded-lg border transition text-left ${
                     selectedPlatforms.includes(platform.id)
-                      ? "border-blue-600 bg-blue-50"
-                      : "border-gray-300 bg-white hover:border-gray-400"
+                      ? "border-cyan-400/40 bg-cyan-400/10"
+                      : "border-white/10 bg-white/5 hover:border-white/20"
                   }`}
                 >
                   <div className="flex items-center gap-2">
                     <span className="text-xl">{platform.icon}</span>
-                    <span className="font-medium text-sm">{platform.name}</span>
+                    <span className="font-medium text-sm text-slate-200">{platform.name}</span>
                   </div>
                 </button>
               ))}
@@ -172,35 +169,35 @@ export default function JobsPage() {
 
         {/* Results */}
         {searched && (
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-              <h2 className="text-lg font-semibold text-gray-900">
+          <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden backdrop-blur-xl shadow-2xl shadow-indigo-950/20">
+            <div className="px-6 py-4 border-b border-white/10 bg-white/5">
+              <h2 className="text-lg font-semibold text-white">
                 Results for "{role}" {jobs.length > 0 && `(${jobs.length} found)`}
               </h2>
             </div>
 
             {jobs.length === 0 ? (
               <div className="p-12 text-center">
-                <Briefcase className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-600 font-medium">No matching jobs found</p>
-                <p className="text-sm text-gray-500 mt-2">Try adjusting your search filters</p>
+                <Briefcase className="w-12 h-12 text-slate-500 mx-auto mb-4" />
+                <p className="text-slate-300 font-medium">No matching jobs found</p>
+                <p className="text-sm text-slate-500 mt-2">Try adjusting your search filters</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-200">
+              <div className="divide-y divide-white/10">
                 {jobs.map(job => (
-                  <div key={job.id} className="px-6 py-5 hover:bg-blue-50 transition">
+                  <div key={job.id} className="px-6 py-5 hover:bg-white/5 transition">
                     <div className="flex justify-between items-start gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-bold text-lg text-gray-900 truncate">{job.title}</h3>
-                          <span className="px-2.5 py-1 bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 text-xs rounded-full font-semibold flex-shrink-0">
+                          <h3 className="font-bold text-lg text-white truncate">{job.title}</h3>
+                          <span className="px-2.5 py-1 bg-cyan-400/10 text-cyan-200 text-xs rounded-full font-semibold flex-shrink-0 border border-cyan-400/20">
                             {job.platform}
                           </span>
                         </div>
                         
-                        <p className="text-sm font-medium text-gray-700 mb-1">{job.company}</p>
+                        <p className="text-sm font-medium text-slate-300 mb-1">{job.company}</p>
                         
-                        <div className="flex flex-wrap gap-3 text-sm text-gray-600 mb-3">
+                        <div className="flex flex-wrap gap-3 text-sm text-slate-400 mb-3">
                           {job.location && (
                             <span className="flex items-center gap-1">
                               📍 {job.location}
@@ -219,7 +216,7 @@ export default function JobsPage() {
                         </div>
 
                         {job.description && (
-                          <p className="text-sm text-gray-600 line-clamp-2">{job.description}</p>
+                          <p className="text-sm text-slate-400 line-clamp-2">{job.description}</p>
                         )}
                       </div>
 
@@ -228,7 +225,7 @@ export default function JobsPage() {
                           onClick={() => {
                             window.open(job.url, "_blank");
                           }}
-                          className="flex items-center gap-2 flex-shrink-0 bg-blue-600 hover:bg-blue-700 text-white"
+                          className="flex items-center gap-2 flex-shrink-0 bg-gradient-to-r from-indigo-500 to-cyan-500 text-white"
                         >
                           Apply Now
                           <ExternalLink className="w-4 h-4" />
@@ -244,9 +241,9 @@ export default function JobsPage() {
 
         {/* Info Box */}
         {!searched && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-            <h3 className="font-semibold text-blue-900 mb-2">💡 How It Works</h3>
-            <ul className="space-y-2 text-sm text-blue-800">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+            <h3 className="font-semibold text-white mb-2">How It Works</h3>
+            <ul className="space-y-2 text-sm text-slate-300">
               <li>• Enter a job title or role you're interested in</li>
               <li>• Select the job platforms you want to search</li>
               <li>• We'll search across all selected platforms and show you available positions</li>

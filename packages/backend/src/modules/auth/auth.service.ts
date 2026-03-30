@@ -19,6 +19,9 @@ export const registerUser = async (input: RegisterInput) => {
     }
 
     const passwordHash = await bcrypt.hash(input.password, 12);
+    
+    // Use provided email or generate from username
+    const email = input.email || `${input.username}@resume.local`;
 
     const user = await prisma.user.create({
       data: {
@@ -26,7 +29,7 @@ export const registerUser = async (input: RegisterInput) => {
         passwordHash,
         firstName: input.firstName,
         lastName: input.lastName,
-        email: `${input.username}@resume.local`
+        email: email
       },
       select: {
         id: true,
@@ -72,16 +75,22 @@ export const registerUser = async (input: RegisterInput) => {
 
 export const loginUser = async (input: LoginInput) => {
   try {
-    let user = await prisma.user.findUnique({ where: { username: input.username } });
+    const email = input.email.trim().toLowerCase();
+    
+    let user = await prisma.user.findFirst({
+      where: {
+        email: email
+      }
+    });
 
     if (!user) {
-      throw new HttpError(401, "Username or password incorrect");
+      throw new HttpError(401, "Email or password incorrect");
     }
 
     // Check password
     const isPasswordValid = await bcrypt.compare(input.password, user.passwordHash);
     if (!isPasswordValid) {
-      throw new HttpError(401, "Username or password incorrect");
+      throw new HttpError(401, "Email or password incorrect");
     }
 
     const payload = { userId: user.id, email: user.email, role: user.role } as const;

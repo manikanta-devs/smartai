@@ -10,8 +10,8 @@ import { useAuthStore } from "../store/auth";
 export const BACKENDS = {
   EXPRESS: {
     name: "Express (TypeScript)",
-    url: "http://localhost:4000/api",
-    port: 4000,
+    url: "http://localhost:5000/api",
+    port: 5000,
     type: "express"
   },
   FASTAPI: {

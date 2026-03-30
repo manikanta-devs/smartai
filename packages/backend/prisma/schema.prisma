@@ -22,6 +22,15 @@ model User {
   refreshTokens RefreshToken[]
   resumes       Resume[]
   applications  Application[]
+  automationReports AutomationReport[]
+  conversations Conversation[]
+  resumeVersions ResumeVersion[]
+  streak        UserStreak?
+  dailyTasks    DailyTask[]
+  jobNotifications JobNotification[]
+  skillGaps     SkillGapAnalysis[]
+  resumeAlerts  ResumeAlert[]
+  followUpReminders FollowUpReminder[]
 }
 
 model RefreshToken {
@@ -45,38 +54,327 @@ model Resume {
   status            String         @default("PENDING")
   parsedData        String?
   analysisResult    String?
+  extracted         String?  // JSON object stored as string
   atsScore          Int?
   overallScore      Int?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
   user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  automationReports AutomationReport[]
+  versions          ResumeVersion[]
 
   @@index([userId])
 }
 
 model Job {
-  id            String       @id @default(uuid())
-  title         String
-  company       String
-  location      String
-  description   String
-  requirements  String
-  salary        String?
-  type          String
-  url           String?
-  createdAt     DateTime     @default(now())
-  applications  Application[]
+  id                String             @id @default(uuid())
+  title             String
+  company           String
+  location          String
+  description       String
+  requirements      String
+  salary            String?
+  type              String
+  url               String?
+  createdAt         DateTime           @default(now())
+  applications      Application[]
+  notifications     JobNotification[]
 }
 
 model Application {
-  id        String   @id @default(uuid())
-  userId    String
-  jobId     String
-  status    String   @default("APPLIED")
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  id                  String       @id @default(uuid())
+  userId              String
+  jobId               String
+  status              String       @default("APPLIED")
+  jobTitle            String
+  company             String
+  jobUrl              String?
+  atsScore            Int?
+  resumeVersionUsed   String?
+  salaryExpected      String?
+  appliedAt           DateTime     @default(now())
+  firstInteractionAt  DateTime?
+  lastUpdateAt        DateTime     @updatedAt
+  notes               String?
+  
+  user                User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job                 Job          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  interviews          Interview[]
+  followUps           FollowUp[]
 
   @@unique([userId, jobId])
   @@index([userId])
+  @@index([status])
+}
+
+model Interview {
+  id                  String       @id @default(uuid())
+  applicationId       String
+  type                String       @default("phone")
+  scheduledAt         DateTime?
+  completedAt         DateTime?
+  feedback            String?
+  score               Int?
+  interviewerName     String?
+  interviewerEmail    String?
+  notes               String?
+  prepMaterialUrl     String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  
+  application         Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@index([scheduledAt])
+}
+
+model FollowUp {
+  id                  String       @id @default(uuid())
+  applicationId       String
+  type                String       @default("email")
+  dueAt               DateTime
+  completedAt         DateTime?
+  message             String?
+  status              String       @default("PENDING")
+  priority            String       @default("MEDIUM")
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  
+  application         Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@index([dueAt])
+  @@index([status])
+}
+
+model AutomationReport {
+  id                    String   @id @default(uuid())
+  userId                String
+  resumeId              String?
+  mode                  String   @default("scheduled")
+  summary               String
+  newJobsCount          Int      @default(0)
+  topMatchesJson        String
+  missingSkillsJson     String?
+  atsFriendlyText       String?
+  extractedDataJson     String?
+  autofillPayloadJson   String?
+  agentPayloadJson      String?
+  generatedAt           DateTime @default(now())
+  createdAt             DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resume Resume? @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+
+  @@index([userId, generatedAt])
+  @@index([resumeId])
+}
+
+// Premium Features Models
+
+// Career Coach - Multi-turn conversations
+model Conversation {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String?  @default("New Chat")
+  messages  Message[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           String   // "user" | "assistant"
+  content        String   // Message content as text
+  createdAt      DateTime @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+}
+
+// Resume Version Control - Git-like versioning
+model ResumeVersion {
+  id           String   @id @default(cuid())
+  userId       String
+  resumeId     String
+  versionName  String
+  content      String   // Resume content as text
+  atsScore     Int      @default(0)
+  overallScore Int      @default(0)
+  changes      String   @default("[]") // JSON array of diffs as string
+  isActive     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resume       Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([resumeId])
+  @@index([createdAt])
+}
+
+// Career Streak - Gamification
+model UserStreak {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  currentStreak Int      @default(0)
+  longestStreak Int      @default(0)
+  totalPoints   Int      @default(0)
+  level         String   @default("Job Seeker")
+  lastActivity  DateTime?
+  badges        Badge[]
+  dailyTasks    DailyTask[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([totalPoints])
+  @@index([lastActivity])
+}
+
+model DailyTask {
+  id          String   @id @default(cuid())
+  userId      String
+  taskId      String
+  points      Int
+  completedAt DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  streak      UserStreak @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@unique([userId, taskId, completedAt])
+  @@index([userId])
+  @@index([completedAt])
+}
+
+model Badge {
+  id        String   @id @default(cuid())
+  streakId  String
+  name      String
+  description String
+  icon      String
+  earnedAt  DateTime @default(now())
+  streak    UserStreak @relation(fields: [streakId], references: [id], onDelete: Cascade)
+
+  @@index([streakId])
+  @@index([earnedAt])
+}
+
+// Job Notifications - Smart job alerts
+model JobNotification {
+  id              String   @id @default(cuid())
+  userId          String
+  jobId           String
+  jobTitle        String
+  company         String
+  matchScore      Int
+  reason          String   // "skill_match", "company_preferred", "salary_range"
+  notificationSent Boolean  @default(false)
+  sentAt          DateTime?
+  clickedAt       DateTime?
+  applied         Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job             Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([createdAt])
+  @@index([matchScore])
+}
+
+// Skill Gap Analysis - Track missing skills
+model SkillGapAnalysis {
+  id                String   @id @default(cuid())
+  userId            String
+  resumeId          String?
+  targetRole        String?
+  currentSkills     String   @default("[]") // JSON array as string
+  requiredSkills    String   @default("[]") // JSON array as string
+  targetSkills      String   @default("[]") // JSON array as string
+  missingSkills     String   @default("[]") // JSON array as string
+  skillGaps         String   @default("{}") // JSON object as string
+  gapPercentage     Int?     // Percentage of missing skills
+  recommendations   String   @default("[]") // JSON array as string
+  recommendedCourses String  @default("[]") // JSON array as string
+  priority          String   @default("MEDIUM") // HIGH, MEDIUM, LOW
+  assignedAt        DateTime @default(now())
+  addressedAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([priority])
+  @@index([createdAt])
+}
+
+
+// Resume Alert - Track resume changes
+model ResumeAlert {
+  id              String   @id @default(cuid())
+  userId          String
+  resumeId        String
+  type            String   @default("HEALTH_CHECK") // "HEALTH_CHECK", "grammar_issue", "weak_word", "missing_section", "ats_concern"
+  severity        String   @default("MEDIUM") // HIGH, MEDIUM, LOW
+  message         String
+  issues          String?   // JSON array stored as string
+  suggestion      String?
+  acknowledged    Boolean  @default(false)
+  resolvedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([severity])
+  @@index([acknowledged])
+}
+
+// Follow-up Reminder - Automated follow-ups
+model FollowUpReminder {
+  id              String   @id @default(cuid())
+  userId          String
+  applicationId   String?
+  company         String
+  contactPerson   String?
+  reminderDate    DateTime
+  reminderType    String   // "email", "phone", "linkedin"
+  message         String   // reminder message content
+  template        String?  // "followup_email", etc
+  sentAt          DateTime?
+  completed       Boolean  @default(false)
+  completedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([reminderDate])
+  @@index([completed])
+}
+
+// Trending Skills - Market data
+model TrendingSkills {
+  id              String   @id @default(cuid())
+  skill           String   @unique
+  category        String   // "programming", "frontend", "backend", "data", "devops", etc
+  demandCount     Int      @default(0)
+  salaryAverage   Int?
+  jobsCount       Int      @default(0)
+  trend           String   @default("STABLE") // UP, STABLE, DOWN
+  trendPercentage Float   @default(0)
+  lastUpdated     DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([category])
+  @@index([demandCount])
+  @@index([trend])
 }

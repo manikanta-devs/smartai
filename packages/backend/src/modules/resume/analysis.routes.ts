@@ -8,7 +8,15 @@ import { HttpError } from '../../common/middleware/error.middleware';
 import { requireAuth } from '../../common/middleware/auth.middleware';
 import { prisma } from '../../config/prisma';
 import { analyzeResumeWithAI } from '../../services/aiAnalyzer';
-import { matchResumeToJob, predictResumeRole, getImprovementSuggestions } from '../../services/resumeAutomation';
+import {
+  matchResumeToJob,
+  predictResumeRole,
+  getImprovementSuggestions,
+  generateCoverLetter,
+  generateInterviewPrep,
+  getSalaryInsights
+} from '../../services/resumeAutomation';
+import { buildResumeAgentPayload } from '../../services/automation.service';
 
 const router = Router();
 
@@ -115,25 +123,12 @@ router.post('/:resumeId/predict-roles', requireAuth, async (req: Request, res: R
       throw new HttpError(404, 'Resume not found');
     }
 
-    let parsed: any = {};
-    try {
-      parsed = resume.parsedData ? JSON.parse(resume.parsedData) : {};
-    } catch {
-      parsed = {};
-    }
-
-    const detectedSkills: string[] = Array.isArray(parsed.skills) ? parsed.skills : [];
-    const roles = predictRolesFromSkills(detectedSkills);
+    const roleResult = await predictResumeRole(resume.text);
 
     res.json({
       success: true,
       data: {
-        roles: roles.map(role => ({
-          name: role.role,
-          matchPercentage: role.matchPercentage,
-          missingSkills: role.missingSkills,
-          requiredSkills: role.requiredSkills
-        }))
+        roles: roleResult.roles
       }
     });
   } catch (error) {
@@ -164,7 +159,7 @@ router.post('/:resumeId/ats-score', requireAuth, async (req: Request, res: Respo
       throw new HttpError(404, 'Resume not found');
     }
 
-    const analysis = await analyzeResumeAI(resume.text);
+    const analysis = await analyzeResumeWithAI(resume.text);
     const keywordScore = jobDescription ? scoreOverlap(resume.text, jobDescription) : analysis.atsScore;
     const formatScore = Math.min(100, analysis.overallScore);
     const sectionScore = Math.min(100, Math.round((analysis.overallScore + analysis.atsScore) / 2));
@@ -211,32 +206,14 @@ router.post('/:resumeId/match-job', requireAuth, async (req: Request, res: Respo
       throw new HttpError(404, 'Resume not found');
     }
 
-    const matchScore = scoreOverlap(resume.text, jobDescription);
-
-    let parsed: any = {};
-    try {
-      parsed = resume.parsedData ? JSON.parse(resume.parsedData) : {};
-    } catch {
-      parsed = {};
-    }
-    const resumeSkills: string[] = Array.isArray(parsed.skills) ? parsed.skills : [];
-    const jdWords = new Set(normalizeWords(jobDescription));
-    const matchingSkills = resumeSkills.filter((s) => jdWords.has(s.toLowerCase()));
-    const missingSkills = [...jdWords].filter((w) => !resumeSkills.map((s) => s.toLowerCase()).includes(w)).slice(0, 10);
+    const matchResult = await matchResumeToJob({
+      resumeText: resume.text,
+      jobDescription
+    });
 
     res.json({
       success: true,
-      data: {
-        matchScore,
-        matchingSkills,
-        missingSkills,
-        feedback:
-          matchScore >= 80
-            ? 'Excellent alignment with the job description.'
-            : matchScore >= 60
-              ? 'Good fit. Improve a few missing skills.'
-              : 'Partial fit. Tailor resume content to this role.'
-      }
+      data: matchResult
     });
   } catch (error) {
     next(error);
@@ -250,7 +227,7 @@ router.post('/:resumeId/match-job', requireAuth, async (req: Request, res: Respo
 router.post('/:resumeId/improvements', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { resumeId } = req.params;
-    const { jobTitle } = req.body || {};
+    const { jobTitle, focus } = req.body || {};
     const userId = req.user?.userId;
 
     if (!userId) {
@@ -266,20 +243,234 @@ router.post('/:resumeId/improvements', requireAuth, async (req: Request, res: Re
       throw new HttpError(404, 'Resume not found');
     }
 
-    const analysis = await analyzeResumeAI(resume.text);
-    const roleHint = typeof jobTitle === 'string' && jobTitle.trim().length > 0 ? jobTitle.trim() : null;
-    const roleLine = roleHint ? `Prioritize keywords and outcomes for ${roleHint}.` : 'Prioritize role-relevant achievements.';
-    const improvements = [
-      ...analysis.suggestions,
-      roleLine,
-      'Add measurable impact in each experience bullet (numbers, percentages, outcomes).',
-      'Use ATS-friendly section headings and avoid complex layout elements.'
-    ];
+    const improvements = await getImprovementSuggestions(
+      resume.text,
+      typeof jobTitle === 'string' ? jobTitle : undefined,
+      typeof focus === 'string' ? focus : undefined
+    );
+
+    res.json({
+      success: true,
+      data: improvements
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/resumes/:resumeId/cover-letter
+ * Generate a tailored cover letter from the resume
+ */
+router.post('/:resumeId/cover-letter', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { resumeId } = req.params;
+    const { jobTitle, jobDescription } = req.body || {};
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      throw new HttpError(401, 'Unauthorized');
+    }
+
+    const resume = await prisma.resume.findUnique({ where: { id: resumeId } });
+    if (!resume || resume.userId !== userId) {
+      throw new HttpError(404, 'Resume not found');
+    }
+
+    const coverLetter = await generateCoverLetter(
+      resume.text,
+      typeof jobTitle === 'string' ? jobTitle : undefined,
+      typeof jobDescription === 'string' ? jobDescription : undefined
+    );
+
+    res.json({ success: true, data: coverLetter });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/resumes/:resumeId/interview-prep
+ * Generate interview prep notes and questions
+ */
+router.post('/:resumeId/interview-prep', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { resumeId } = req.params;
+    const { role, jobDescription } = req.body || {};
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      throw new HttpError(401, 'Unauthorized');
+    }
+
+    const resume = await prisma.resume.findUnique({ where: { id: resumeId } });
+    if (!resume || resume.userId !== userId) {
+      throw new HttpError(404, 'Resume not found');
+    }
+
+    const interviewPrep = await generateInterviewPrep(
+      resume.text,
+      typeof role === 'string' ? role : undefined,
+      typeof jobDescription === 'string' ? jobDescription : undefined
+    );
+
+    res.json({ success: true, data: interviewPrep });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/resumes/:resumeId/salary-insights
+ * Estimate salary expectations and negotiation guidance
+ */
+router.post('/:resumeId/salary-insights', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { resumeId } = req.params;
+    const { role, location } = req.body || {};
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      throw new HttpError(401, 'Unauthorized');
+    }
+
+    const resume = await prisma.resume.findUnique({ where: { id: resumeId } });
+    if (!resume || resume.userId !== userId) {
+      throw new HttpError(404, 'Resume not found');
+    }
+
+    const salaryInsights = await getSalaryInsights(
+      resume.text,
+      typeof role === 'string' ? role : undefined,
+      typeof location === 'string' ? location : undefined
+    );
+
+    res.json({ success: true, data: salaryInsights });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/resumes/:resumeId/auto-run
+ * Run end-to-end automation in one API call
+ */
+router.post('/:resumeId/auto-run', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { resumeId } = req.params;
+    const { jobDescription, jobTitle } = req.body || {};
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      throw new HttpError(401, 'Unauthorized');
+    }
+
+    const resume = await prisma.resume.findUnique({
+      where: { id: resumeId }
+    });
+
+    if (!resume || resume.userId !== userId) {
+      throw new HttpError(404, 'Resume not found');
+    }
+
+    const warnings: string[] = [];
+
+    let analysis = {
+      atsScore: 0,
+      overallScore: 0,
+      breakdown: {},
+      suggestions: [],
+      keywordRecommendations: []
+    } as any;
+    try {
+      analysis = await analyzeResumeWithAI(resume.text);
+    } catch {
+      warnings.push('Analysis step failed. Fallback analysis applied.');
+    }
+
+    let roles = { roles: [] as Array<{ name: string; matchPercentage: number; requiredSkills: string[]; missingSkills: string[] }> };
+    try {
+      roles = await predictResumeRole(resume.text);
+    } catch {
+      warnings.push('Role prediction failed.');
+    }
+
+    let improvements = { improvements: [] as string[], prioritized: [] as Array<{ priority: 'high' | 'medium' | 'low'; suggestion: string; impact: string }> };
+    try {
+      improvements = await getImprovementSuggestions(
+        resume.text,
+        typeof jobTitle === 'string' ? jobTitle : undefined
+      );
+    } catch {
+      warnings.push('Improvement suggestions failed.');
+    }
+
+    let match = {
+      matchScore: 0,
+      matchingSkills: [] as string[],
+      missingSkills: [] as string[],
+      feedback: 'Provide jobDescription to generate job match.',
+      suggestedImprovements: [] as string[]
+    };
+
+    if (typeof jobDescription === 'string' && jobDescription.trim().length > 0) {
+      try {
+        match = await matchResumeToJob({ resumeText: resume.text, jobDescription });
+      } catch {
+        warnings.push('Job match failed.');
+      }
+    }
+
+    try {
+      await prisma.resume.update({
+        where: { id: resume.id },
+        data: {
+          atsScore: analysis.atsScore,
+          overallScore: analysis.overallScore,
+          analysisResult: JSON.stringify(analysis),
+          status: 'COMPLETED'
+        }
+      });
+    } catch {
+      warnings.push('Failed to persist updated analysis to database.');
+    }
+
+    const agent = buildResumeAgentPayload(
+      resume.text,
+      typeof jobTitle === 'string' && jobTitle.trim().length > 0 ? jobTitle : roles.roles[0]?.name || 'Software Engineer',
+      typeof jobDescription === 'string' && jobDescription.trim().length > 0 ? {
+        id: resume.id,
+        title: typeof jobTitle === 'string' && jobTitle.trim().length > 0 ? jobTitle : roles.roles[0]?.name || 'Target Role',
+        company: 'Target employer',
+        location: 'Remote',
+        platform: 'manual',
+        matchScore: match.matchScore,
+        feedback: match.feedback,
+        matchingSkills: match.matchingSkills,
+        missingSkills: match.missingSkills
+      } : roles.roles[0] ? {
+        id: resume.id,
+        title: roles.roles[0].name,
+        company: 'Top role match',
+        location: 'Remote',
+        platform: 'agent',
+        matchScore: roles.roles[0].matchPercentage,
+        feedback: `Best role match: ${roles.roles[0].name}`,
+        matchingSkills: roles.roles[0].requiredSkills,
+        missingSkills: roles.roles[0].missingSkills
+      } : undefined,
+      improvements.prioritized.map((item) => item.suggestion)
+    );
 
     res.json({
       success: true,
       data: {
-        improvements
+        analysis,
+        roles: roles.roles,
+        match,
+        improvements,
+        agent,
+        warnings
       }
     });
   } catch (error) {

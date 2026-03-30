@@ -17,12 +17,12 @@ export function Header() {
   if (!user) return null;
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-[#04050f]/80 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div
-            className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent cursor-pointer"
+            className="text-2xl font-bold bg-gradient-to-r from-indigo-300 via-cyan-300 to-emerald-300 bg-clip-text text-transparent cursor-pointer"
             onClick={() => navigate('/dashboard')}
           >
             smartAI
@@ -32,13 +32,13 @@ export function Header() {
           <nav className="hidden md:flex items-center gap-8">
             <button
               onClick={() => navigate('/dashboard')}
-              className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
+              className="text-slate-300 hover:text-white font-medium transition-colors"
             >
               Dashboard
             </button>
             <button
               onClick={() => navigate('/jobs')}
-              className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
+              className="text-slate-300 hover:text-white font-medium transition-colors"
             >
               Find Jobs
             </button>
@@ -47,8 +47,8 @@ export function Header() {
           {/* User Menu */}
           <div className="flex items-center gap-4">
             <div className="hidden md:block text-right">
-              <p className="text-sm font-medium text-gray-900">{user.email}</p>
-              <p className="text-xs text-gray-500">
+              <p className="text-sm font-medium text-white">{user.email}</p>
+              <p className="text-xs text-slate-400">
                 {user.firstName} {user.lastName}
               </p>
             </div>
@@ -78,7 +78,7 @@ export function Header() {
             <div className="md:hidden">
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
-                className="p-2 hover:bg-gray-100 rounded-lg"
+                className="p-2 rounded-lg text-slate-200 hover:bg-white/10"
               >
                 <Menu className="w-6 h-6" />
               </button>
@@ -88,13 +88,13 @@ export function Header() {
 
         {/* Mobile Menu */}
         {menuOpen && (
-          <div className="md:hidden border-t border-gray-200 py-4 space-y-2">
+          <div className="md:hidden border-t border-white/10 py-4 space-y-2">
             <button
               onClick={() => {
                 navigate('/dashboard');
                 setMenuOpen(false);
               }}
-              className="block w-full text-left px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+              className="block w-full text-left px-4 py-2 text-slate-300 hover:bg-white/10 rounded"
             >
               Dashboard
             </button>
@@ -103,7 +103,7 @@ export function Header() {
                 navigate('/jobs');
                 setMenuOpen(false);
               }}
-              className="block w-full text-left px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+              className="block w-full text-left px-4 py-2 text-slate-300 hover:bg-white/10 rounded"
             >
               Find Jobs
             </button>
@@ -112,7 +112,7 @@ export function Header() {
                 navigate('/profile');
                 setMenuOpen(false);
               }}
-              className="block w-full text-left px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+              className="block w-full text-left px-4 py-2 text-slate-300 hover:bg-white/10 rounded"
             >
               Profile
             </button>
@@ -121,7 +121,7 @@ export function Header() {
                 handleLogout();
                 setMenuOpen(false);
               }}
-              className="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 rounded"
+              className="block w-full text-left px-4 py-2 text-rose-300 hover:bg-rose-500/10 rounded"
             >
               Logout
             </button>

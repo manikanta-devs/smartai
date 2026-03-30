@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { verifyAccessToken } from "../utils/jwt";
 
 export type AuthUser = {
+  id?: string;
   userId: string;
   email: string;
   role: string;

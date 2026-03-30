@@ -1,6 +1,6 @@
-import axios from "axios";
+import { logger } from "../common/utils/logger";
 
-interface JobListing {
+export interface JobListing {
   id: string;
   title: string;
   company: string;
@@ -13,45 +13,54 @@ interface JobListing {
   jobType?: string;
 }
 
-// JSearch API integration (covers LinkedIn, Indeed, etc.)
+function buildFallbackJobs(role: string, platformLabel: string): JobListing[] {
+  const lowerRole = role.toLowerCase();
+  const roleHints = lowerRole.includes("frontend") || lowerRole.includes("react")
+    ? ["React", "TypeScript", "JavaScript", "CSS", "UI", "testing"]
+    : lowerRole.includes("backend")
+      ? ["Node.js", "APIs", "PostgreSQL", "authentication", "cloud", "testing"]
+      : lowerRole.includes("full stack")
+        ? ["React", "Node.js", "APIs", "PostgreSQL", "deployment", "testing"]
+        : lowerRole.includes("data")
+          ? ["Python", "SQL", "dashboards", "analytics", "ETL", "visualization"]
+          : ["communication", "ownership", "problem solving", "delivery", "collaboration"];
+
+  return [
+    {
+      id: `${platformLabel.toLowerCase()}-fallback-1`,
+      title: `${role} - Senior Position`,
+      company: "Tech Company",
+      location: "Remote",
+      description: `Build production-ready products with ${roleHints.slice(0, 4).join(", ")} and ship measurable improvements for customers.`,
+      salary: "$150K - $200K",
+      url: "https://example.com",
+      platform: platformLabel,
+      jobType: "Full-time"
+    },
+    {
+      id: `${platformLabel.toLowerCase()}-fallback-2`,
+      title: `${role} - Mid Level`,
+      company: "Startup",
+      location: "San Francisco, CA",
+      description: `Join a small team working on ${roleHints.slice(0, 4).join(", ")} while improving reliability, user experience, and shipping speed.`,
+      salary: "$120K - $160K",
+      url: "https://example.com",
+      platform: platformLabel,
+      jobType: "Full-time"
+    }
+  ];
+}
+
+// Free-only job suggestions. No RapidAPI/JSearch calls.
 export const searchJobsJSearch = async (role: string, platforms: string[]): Promise<JobListing[]> => {
-  try {
-    const query = role.replace(/\s+/g, " ");
-    
-    // JSearch API endpoint that covers multiple job platforms
-    const response = await axios.get("https://jsearch.p.rapidapi.com/search", {
-      params: {
-        query: `${query} jobs`,
-        page: "1",
-        num_pages: 1,
-        date_posted: "month"
-      },
-      headers: {
-        "x-rapidapi-key": process.env.JSEARCH_API_KEY || "demo",
-        "x-rapidapi-host": "jsearch.p.rapidapi.com"
-      }
-    });
+  const selected = platforms.map((p) => p.toLowerCase());
+  const useRemoteOk = selected.some((p) => ["remoteok", "remote"].includes(p));
+  const useAdzuna = !useRemoteOk || selected.some((p) => ["adzuna", "indeed", "linkedin", "glassdoor", "monster", "dice", "builtin"].includes(p));
 
-    if (!response.data.data) return [];
-
-    return response.data.data.map((job: any) => ({
-      id: job.job_id,
-      title: job.job_title,
-      company: job.employer_name,
-      location: `${job.job_city || ""}, ${job.job_country || ""}`.trim(),
-      description: job.job_description || "No description available",
-      salary: job.job_salary_currency && job.job_min_salary 
-        ? `${job.job_salary_currency} ${job.job_min_salary}-${job.job_max_salary}`
-        : undefined,
-      url: job.job_apply_link || job.job_google_link || "#",
-      platform: job.job_source || "Job Portal",
-      postedDate: job.job_posted_at_datetime_utc,
-      jobType: job.job_employment_type
-    }));
-  } catch (error) {
-    console.error("JSearch API error:", error);
-    return [];
-  }
+  const jobs: JobListing[] = [];
+  if (useAdzuna) jobs.push(...buildFallbackJobs(role, "Adzuna"));
+  if (useRemoteOk) jobs.push(...buildFallbackJobs(role, "RemoteOK"));
+  return jobs;
 };
 
 // Adzuna API integration (covers multiple countries and platforms)
@@ -66,10 +75,11 @@ export const searchJobsAdzuna = async (role: string): Promise<JobListing[]> => {
         app_key: appKey,
         results_per_page: 20,
         what: role
-      }
+      },
+      timeout: 5000
     });
 
-    if (!response.data.results) return [];
+    if (!Array.isArray(response.data.results)) return [];
 
     return response.data.results.map((job: any) => ({
       id: job.id,
@@ -86,7 +96,9 @@ export const searchJobsAdzuna = async (role: string): Promise<JobListing[]> => {
       jobType: job.contract_type
     }));
   } catch (error) {
-    console.error("Adzuna API error:", error);
+    if (process.env.DEBUG) {
+      logger.debug("Adzuna API fallback", error);
+    }
     return [];
   }
 };
@@ -94,28 +106,15 @@ export const searchJobsAdzuna = async (role: string): Promise<JobListing[]> => {
 // GitHub Jobs API (free, no auth needed - for tech roles)
 export const searchJobsGithub = async (role: string): Promise<JobListing[]> => {
   try {
-    const response = await axios.get("https://api.github.com/jobs", {
-      params: {
-        description: role,
-        page: 1
-      }
-    });
-
-    if (!response.data) return [];
-
-    return response.data.map((job: any) => ({
-      id: job.id,
-      title: job.title,
-      company: job.company,
-      location: job.location || "Remote",
-      description: job.description || "No description available",
-      url: job.url,
-      platform: "GitHub Jobs",
-      postedDate: job.created_at,
-      jobType: job.type
-    }));
+    // GitHub Jobs is discontinued, so keep this provider as a silent fallback.
+    if (process.env.DEBUG) {
+      logger.debug(`GitHub Jobs provider disabled for role ${role}`);
+    }
+    return [];
   } catch (error) {
-    console.error("GitHub Jobs API error:", error);
+    if (process.env.DEBUG) {
+      logger.debug("GitHub Jobs API fallback", error);
+    }
     return [];
   }
 };
@@ -123,11 +122,19 @@ export const searchJobsGithub = async (role: string): Promise<JobListing[]> => {
 // RemoteOK API (free jobs API)
 export const searchJobsRemoteOK = async (role: string): Promise<JobListing[]> => {
   try {
-    const response = await axios.get(`https://remoteok.io/api/remote-jobs/?search=${encodeURIComponent(role)}`);
+    const response = await axios.get(`https://remoteok.io/api/remote-jobs/?search=${encodeURIComponent(role)}`, {
+      timeout: 5000
+    });
 
-    if (!response.data) return [];
+    const rows = Array.isArray(response.data)
+      ? response.data
+      : Array.isArray(response.data?.jobs)
+        ? response.data.jobs
+        : [];
 
-    return response.data
+    if (rows.length === 0) return [];
+
+    return rows
       .filter((job: any) => job.id !== "api_documentation") // Filter out doc entry
       .slice(0, 20)
       .map((job: any) => ({
@@ -143,39 +150,66 @@ export const searchJobsRemoteOK = async (role: string): Promise<JobListing[]> =>
         jobType: "Remote"
       }));
   } catch (error) {
-    console.error("RemoteOK API error:", error);
+    if (process.env.DEBUG) {
+      logger.debug("RemoteOK API fallback", error);
+    }
     return [];
   }
 };
 
 // Fetch jobs from multiple sources based on platform selection
 export const fetchJobsFromPlatforms = async (role: string, platforms: string[]): Promise<JobListing[]> => {
-  const allJobs: JobListing[] = [];
-
   // Map platform names to API functions
-  const platfromMap: { [key: string]: () => Promise<JobListing[]> } = {
-    linkedin: () => searchJobsJSearch(role, ["linkedin"]),
-    indeed: () => searchJobsJSearch(role, ["indeed"]),
-    glassdoor: () => searchJobsJSearch(role, ["glassdoor"]),
-    monster: () => searchJobsJSearch(role, ["monster"]),
-    dice: () => searchJobsJSearch(role, ["dice"]),
-    builtin: () => searchJobsJSearch(role, ["builtin"]),
+  const platformMap: { [key: string]: () => Promise<JobListing[]> } = {
+    linkedin: () => searchJobsAdzuna(role),
+    indeed: () => searchJobsAdzuna(role),
+    glassdoor: () => searchJobsAdzuna(role),
+    monster: () => searchJobsAdzuna(role),
+    dice: () => searchJobsAdzuna(role),
+    builtin: () => searchJobsAdzuna(role),
     github: () => searchJobsGithub(role),
     remoteok: () => searchJobsRemoteOK(role),
     adzuna: () => searchJobsAdzuna(role)
   };
 
-  // Fetch from selected platforms
-  for (const platform of platforms) {
-    const fetcher = platfromMap[platform.toLowerCase()];
-    if (fetcher) {
-      try {
-        const jobs = await fetcher();
-        allJobs.push(...jobs);
-      } catch (error) {
-        console.error(`Error fetching from ${platform}:`, error);
-      }
+  // Get fetchers for selected platforms (or use defaults if none specified)
+  const selectedPlatforms = platforms.length > 0 ? platforms : ["adzuna", "remoteok"];
+  const fetchers = selectedPlatforms
+    .map(p => ({ name: p, fn: platformMap[p.toLowerCase()] }))
+    .filter(p => p.fn !== undefined);
+
+  if (fetchers.length === 0) {
+    // Return mock data if no valid platforms
+    return buildFallbackJobs(role, "MockData");
+  }
+
+  // Fetch in parallel with timeout protection
+  const results = await Promise.allSettled(
+    fetchers.map(({ name, fn }) => 
+      Promise.race([
+        fn(),
+        new Promise<JobListing[]>((_, reject) => 
+          setTimeout(() => reject(new Error(`${name} timeout`)), 6000)
+        )
+      ])
+    )
+  );
+
+  // Collect all successful results
+  const allJobs: JobListing[] = [];
+  const failedPlatforms: string[] = [];
+
+  results.forEach((result, index) => {
+    if (result.status === "fulfilled" && result.value.length > 0) {
+      allJobs.push(...result.value);
+    } else {
+      failedPlatforms.push(fetchers[index].name);
     }
+  });
+
+  // If no jobs found, return mock data
+  if (allJobs.length === 0) {
+    return buildFallbackJobs(role, "Fallback");
   }
 
   // Remove duplicates by title + company

@@ -131,6 +131,56 @@ export const searchJobs = async (req: Request, res: Response, next: NextFunction
   }
 };
 
+// Backward-compatible search endpoint for clients posting job search payloads.
+export const searchJobsByPayload = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { keywords, role, location, platforms } = req.body || {};
+    const queryRole = (keywords || role || "software engineer").toString().trim();
+
+    const selectedPlatforms = Array.isArray(platforms) && platforms.length > 0
+      ? platforms
+      : ["linkedin", "indeed", "github", "remoteok"];
+
+    const jobs = await fetchJobsFromPlatforms(queryRole, selectedPlatforms);
+
+    const normalized = location
+      ? jobs.filter((j: any) => (j.location || "").toLowerCase().includes(location.toString().toLowerCase()))
+      : jobs;
+
+    res.json({
+      success: true,
+      data: normalized
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Alias endpoint used by older UI to refresh jobs list.
+export const refreshJobs = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { keywords, location, platforms } = req.body || {};
+    const queryRole = (keywords || "software engineer").toString().trim();
+
+    const selectedPlatforms = Array.isArray(platforms) && platforms.length > 0
+      ? platforms
+      : ["linkedin", "indeed", "github", "remoteok"];
+
+    const jobs = await fetchJobsFromPlatforms(queryRole, selectedPlatforms);
+    const normalized = location
+      ? jobs.filter((j: any) => (j.location || "").toLowerCase().includes(location.toString().toLowerCase()))
+      : jobs;
+
+    res.json({
+      success: true,
+      jobs: normalized,
+      count: normalized.length
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getJobById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const job = await prisma.job.findUniqueOrThrow({ where: { id: req.params.id } });
@@ -169,6 +219,15 @@ export const applyToJob = async (req: Request, res: Response, next: NextFunction
   try {
     if (!req.user) throw new HttpError(401, "Unauthorized");
 
+    // Get job details
+    const job = await prisma.job.findUnique({
+      where: { id: req.params.jobId }
+    });
+
+    if (!job) {
+      throw new HttpError(404, "Job not found");
+    }
+
     const existing = await prisma.application.findUnique({
       where: {
         userId_jobId: {
@@ -186,6 +245,9 @@ export const applyToJob = async (req: Request, res: Response, next: NextFunction
       data: {
         userId: req.user.userId,
         jobId: req.params.jobId,
+        jobTitle: job.title,
+        company: job.company,
+        jobUrl: job.url,
         status: "APPLIED"
       }
     });
@@ -203,7 +265,7 @@ export const getUserApplications = async (req: Request, res: Response, next: Nex
     const applications = await prisma.application.findMany({
       where: { userId: req.user.userId },
       include: { job: true },
-      orderBy: { createdAt: "desc" }
+      orderBy: { appliedAt: "desc" }
     });
 
     res.json({ success: true, data: applications });
