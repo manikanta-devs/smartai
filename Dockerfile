@@ -8,9 +8,6 @@ COPY package*.json ./
 # Copy backend package and source
 COPY packages/backend ./packages/backend
 
-# Copy shared package (if backend depends on it)
-COPY packages/shared ./packages/shared 2>/dev/null || true
-
 # Install dependencies
 RUN npm install
 
