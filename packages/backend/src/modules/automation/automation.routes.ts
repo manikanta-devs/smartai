@@ -108,7 +108,7 @@ router.get(
 
     // Group by target role
     const grouped = gaps.reduce(
-      (acc, gap) => {
+      (acc: Record<string, any>, gap: any) => {
         const role = gap.targetRole || "Unknown";
         if (!acc[role]) {
           acc[role] = gap;
