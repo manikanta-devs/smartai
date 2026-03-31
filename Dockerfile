@@ -30,6 +30,9 @@ RUN npm install --save-dev ts-node @types/node
 # Generate Prisma Client
 RUN npx prisma generate
 
+# Remove old SQLite migrations - we're using PostgreSQL now
+RUN rm -rf prisma/migrations
+
 # Environment setup
 ENV NODE_ENV=production
 
@@ -41,4 +44,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:5000', (r) => {if (r.statusCode !== 404) throw new Error(r.statusCode)})" || exit 1
 
 # Run migrations and start application
-CMD npx prisma migrate deploy && (if [ -f dist/server.js ]; then node dist/server.js; else npx ts-node src/server.ts; fi)
+CMD npx prisma db push --skip-generate && (if [ -f dist/server.js ]; then node dist/server.js; else npx ts-node src/server.ts; fi)
