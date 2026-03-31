@@ -1,107 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/Button';
-import {
-  ArrowRight,
-  Briefcase,
-  Building2,
-  CheckCircle2,
-  GraduationCap,
-  LayoutGrid,
-  Rocket,
-  Sparkles,
-  Stars,
-  Zap
-} from 'lucide-react';
+import { ArrowRight, Sparkles, Stars } from 'lucide-react';
 
-const featureCards = [
-  {
-    icon: Sparkles,
-    title: 'ATS Score + Fix',
-    description: 'Scan your resume instantly, surface gaps, and get practical fixes that raise compatibility.'
-  },
-  {
-    icon: Zap,
-    title: 'AI Resume Rewriter',
-    description: 'Turn weak bullets into measurable wins with cleaner language and role-specific keywords.'
-  },
-  {
-    icon: Briefcase,
-    title: 'Smart Job Matching',
-    description: 'See jobs that align with your skills, experience, and target role before you apply.'
-  },
-  {
-    icon: Stars,
-    title: 'Cover Letter AI',
-    description: 'Generate tailored cover letters and outreach messages without starting from scratch.'
-  },
-  {
-    icon: Rocket,
-    title: 'Interview Simulator',
-    description: 'Practice with realistic interview prompts, feedback, and confidence-building drills.'
-  },
-  {
-    icon: LayoutGrid,
-    title: 'Salary Intelligence',
-    description: 'Compare compensation, benchmark offers, and make better decisions with data.'
-  }
-];
-
-const studentCards = [
-  {
-    icon: GraduationCap,
-    title: 'Final Year Students',
-    description: 'Resume scoring, internships, and interview prep for the transition into full-time roles.'
-  },
-  {
-    icon: Building2,
-    title: 'CS / Engineering',
-    description: 'Project bullet rewrites, GitHub polish, and role matching for product and startup hiring.'
-  },
-  {
-    icon: Briefcase,
-    title: 'Business / MBA',
-    description: 'Case-style interview practice, leadership storytelling, and smarter networking templates.'
-  },
-  {
-    icon: Sparkles,
-    title: 'Design Students',
-    description: 'Portfolio framing, visual storytelling, and stronger achievement language for creative roles.'
-  },
-  {
-    icon: CheckCircle2,
-    title: 'Research / Science',
-    description: 'Academic-to-industry resume conversion, publication highlighting, and stronger impact metrics.'
-  },
-  {
-    icon: Rocket,
-    title: 'International Students',
-    description: 'Visa-friendly job targeting, relocation language, and tailored applications for new markets.'
-  }
-];
-
-const platforms = [
-  'LinkedIn', 'Indeed', 'Internshala', 'Naukri', 'Wellfound', 'Glassdoor', 'GitHub Jobs', 'Remotive',
-  'YCombinator Jobs', 'AngelList', 'Adzuna', 'Reed', 'The Muse', 'Handshake', 'Chegg Internships',
-  'LetsIntern', 'Unstop', 'Hirect', 'Foundit', 'Shine', 'Monster', 'SimplyHired', 'Dice', 'Ladders',
-  'FlexJobs', 'We Work Remotely', 'Remote.co'
-];
-
-const testimonials = [
-  {
-    quote: 'Got job at Google after using CareerOS.',
-    name: 'Maya, Final Year CS',
-    result: 'ATS score improved from 48 to 91'
-  },
-  {
-    quote: 'Score went from 45 to 92 in 10 minutes.',
-    name: 'Arjun, MBA Candidate',
-    result: 'Resume rewrite landed 6 interviews'
-  },
-  {
-    quote: 'Landed internship at Amazon as a fresher.',
-    name: 'Sara, Design Student',
-    result: 'Job matching helped shortlist the right role'
-  }
+const steps = [
+  { number: 1, title: 'Upload Resume', description: 'PDF or Word doc' },
+  { number: 2, title: 'Get ATS Score', description: 'Real feedback on formatting' },
+  { number: 3, title: 'Find Jobs', description: 'Matched to your skills' },
+  { number: 4, title: 'Apply', description: 'With cover letters' }
 ];
 
 export function LandingPage() {
@@ -109,226 +14,139 @@ export function LandingPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#04050f] text-slate-100">
+      {/* Background effects */}
       <div className="pointer-events-none absolute left-[-8rem] top-[-6rem] h-[28rem] w-[28rem] rounded-full bg-indigo-500/10 blur-3xl" />
       <div className="pointer-events-none absolute right-[-8rem] top-[14rem] h-[30rem] w-[30rem] rounded-full bg-cyan-500/10 blur-3xl" />
-      <div className="pointer-events-none absolute left-1/2 top-[24rem] h-[30rem] w-[30rem] -translate-x-1/2 rounded-full bg-violet-500/10 blur-3xl" />
 
+      {/* Header */}
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#04050f]/75 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-          <button onClick={() => navigate('/')} className="flex items-center gap-2 text-left">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-cyan-200 shadow-lg shadow-cyan-950/20">
+          <button onClick={() => navigate('/')} className="flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-cyan-200">
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-lg font-semibold tracking-tight text-white">CareerOS</div>
-              <div className="text-xs text-slate-400">Free career platform for students</div>
+              <div className="text-lg font-semibold text-white">SmartAI</div>
+              <div className="text-xs text-slate-400">Career Platform</div>
             </div>
           </button>
-
-          <nav className="hidden items-center gap-6 text-sm text-slate-300 lg:flex">
-            <a href="#features" className="hover:text-white">Features</a>
-            <a href="#students" className="hover:text-white">For Students</a>
-            <a href="#jobs" className="hover:text-white">Job Board</a>
-            <a href="#tools" className="hover:text-white">Free Tools</a>
-          </nav>
 
           <div className="flex items-center gap-3">
             <Button variant="outline" onClick={() => navigate('/login')} className="border-white/10 bg-white/5 text-slate-100 hover:bg-white/10">
               Sign In
             </Button>
-            <Button onClick={() => navigate('/upload')} className="bg-gradient-to-r from-indigo-500 to-cyan-500 text-white hover:from-indigo-400 hover:to-cyan-400">
-              Analyze My Resume Free
+            <Button onClick={() => navigate('/register')} className="bg-gradient-to-r from-indigo-500 to-cyan-500 text-white hover:from-indigo-400 hover:to-cyan-400">
+              Get Started Free
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
-        <section className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+      <main className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+        {/* Hero */}
+        <section className="grid gap-10 lg:grid-cols-2 lg:items-center mb-24">
           <div>
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-200">
               <Stars className="h-3.5 w-3.5" />
-              Free career tools for students
+              AI-powered career tools
             </div>
 
-            <h1 className="max-w-3xl text-5xl font-semibold tracking-tight text-white sm:text-6xl lg:text-7xl" style={{ fontFamily: 'var(--font-clash)' }}>
-              From Resume to
+            <h1 className="text-5xl font-semibold tracking-tight text-white sm:text-6xl">
+              Land Your
               <span className="block bg-gradient-to-r from-indigo-300 via-cyan-300 to-emerald-300 bg-clip-text text-transparent">
-                Job Offer. Free.
+                Dream Job
               </span>
             </h1>
 
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-              Upload your resume once. Get ATS score, job matches, cover letters, interview prep and salary insights. Everything is AI-powered and built for students.
+              Upload your resume. Get instant ATS score, job matches, cover letters, and everything you need to get hired.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
-              <Button size="lg" onClick={() => navigate('/upload')} className="bg-gradient-to-r from-indigo-500 via-violet-500 to-cyan-500 text-white shadow-lg shadow-indigo-950/30 hover:from-indigo-400 hover:via-violet-400 hover:to-cyan-400">
-                Upload Resume — It’s Free
+              <Button size="lg" onClick={() => navigate('/register')} className="bg-gradient-to-r from-indigo-500 via-violet-500 to-cyan-500 text-white shadow-lg shadow-indigo-950/30 hover:from-indigo-400 hover:via-violet-400 hover:to-cyan-400">
+                Start Free — No Credit Card
               </Button>
               <Button size="lg" variant="outline" onClick={() => navigate('/login')} className="border-white/10 bg-white/5 text-slate-100 hover:bg-white/10">
-                See Live Demo
+                Already have an account?
               </Button>
             </div>
 
-            <div className="mt-10 rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-xl">
-              <div className="text-sm uppercase tracking-[0.24em] text-slate-400">What you get</div>
-              <div className="mt-2 text-lg font-semibold text-white">ATS feedback, job matching, rewrites, and interview prep.</div>
-              <p className="mt-2 text-sm leading-6 text-slate-400">
-                The page now avoids fake metrics and instead points you toward the actual tools available in the app.
-              </p>
+            <div className="mt-10 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="text-sm text-slate-400">What's Included</div>
+              <div className="mt-3 space-y-2 text-sm text-slate-300">
+                <div>✓ ATS score & improvement tips</div>
+                <div>✓ Job recommendations</div>
+                <div>✓ AI resume rewriting</div>
+                <div>✓ Cover letter generator</div>
+              </div>
             </div>
           </div>
 
-          <div className="relative rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-2xl shadow-indigo-950/30 backdrop-blur-xl">
-            <div className="absolute inset-x-8 top-8 h-px bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent" />
-            <div className="rounded-[28px] border border-white/10 bg-[#0c0e1a] p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm uppercase tracking-[0.2em] text-slate-400">Real workflow</div>
-                  <div className="mt-2 text-3xl font-semibold text-white">Upload, analyze, improve</div>
-                </div>
+          {/* Right side - simple visual */}
+          <div className="rounded-[32px] border border-white/10 bg-white/5 p-8 backdrop-blur-xl">
+            <div className="space-y-6">
+              <div className="rounded-2xl border border-indigo-400/20 bg-indigo-400/5 p-6">
+                <div className="text-sm font-semibold text-indigo-200 mb-2">Step 1: Upload</div>
+                <div className="text-sm text-slate-300">Drag & drop your resume (PDF or DOC)</div>
               </div>
-
-              <div className="mt-5 grid grid-cols-2 gap-3 text-sm text-slate-300">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">Real resume upload</div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">Actual ATS analysis</div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">Job recommendations</div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-3">Rewrite guidance</div>
+              <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-6">
+                <div className="text-sm font-semibold text-cyan-200 mb-2">Step 2: Analyze</div>
+                <div className="text-sm text-slate-300">AI scans for ATS compatibility & gaps</div>
               </div>
-
-              <div className="mt-5 rounded-3xl border border-cyan-400/10 bg-cyan-400/5 p-5">
-                <div className="text-sm text-cyan-100">Live product flow</div>
-                <div className="mt-2 text-xl font-semibold text-white">Upload, analyze, match, apply</div>
-                <p className="mt-2 text-sm leading-6 text-slate-300">
-                  CareerOS turns a resume into an end-to-end job search workflow without fake benchmark numbers.
-                </p>
+              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-6">
+                <div className="text-sm font-semibold text-emerald-200 mb-2">Step 3: Improve</div>
+                <div className="text-sm text-slate-300">Get actionable fixes & job matches</div>
+              </div>
+              <div className="rounded-2xl border border-violet-400/20 bg-violet-400/5 p-6">
+                <div className="text-sm font-semibold text-violet-200 mb-2">Step 4: Apply</div>
+                <div className="text-sm text-slate-300">Create cover letters & track applications</div>
               </div>
             </div>
           </div>
         </section>
 
-        <section id="features" className="mt-24">
-          <div className="mb-8 flex items-end justify-between gap-4">
-            <div>
-              <div className="text-sm uppercase tracking-[0.24em] text-slate-400">Features</div>
-              <h2 className="mt-2 text-3xl font-semibold text-white">Everything a student needs to get hired</h2>
-            </div>
+        {/* Process steps */}
+        <section>
+          <div className="mb-12">
+            <h2 className="text-3xl font-semibold text-white">Simple 4-Step Process</h2>
+            <p className="mt-2 text-slate-400">From resume to job offer in under 30 minutes</p>
           </div>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {featureCards.map(({ icon: Icon, title, description }) => (
-              <div key={title} className="rounded-[24px] border border-white/10 bg-white/5 p-5 backdrop-blur-xl transition hover:border-white/20 hover:bg-white/10">
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-indigo-400/20 bg-indigo-400/10 text-indigo-100">
-                  <Icon className="h-6 w-6" />
+          <div className="grid gap-4 md:grid-cols-4">
+            {steps.map(({ number, title, description }) => (
+              <div key={number} className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl hover:border-white/20 transition">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-500/20 font-bold text-indigo-100 mb-4">
+                  {number}
                 </div>
-                <h3 className="text-xl font-semibold text-white">{title}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-300">{description}</p>
+                <h3 className="font-semibold text-white">{title}</h3>
+                <p className="mt-2 text-sm text-slate-300">{description}</p>
               </div>
             ))}
           </div>
         </section>
 
-        <section id="students" className="mt-24">
-          <div className="mb-8">
-            <div className="text-sm uppercase tracking-[0.24em] text-slate-400">For Students</div>
-            <h2 className="mt-2 text-3xl font-semibold text-white">Built for students and fresh graduates</h2>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {studentCards.map(({ icon: Icon, title, description }) => (
-              <div key={title} className="rounded-[24px] border border-white/10 bg-[rgba(255,255,255,0.03)] p-5 backdrop-blur-xl">
-                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-cyan-200">
-                  <Icon className="h-5 w-5" />
-                </div>
-                <h3 className="text-lg font-semibold text-white">{title}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-300">{description}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section id="jobs" className="mt-24 rounded-[28px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl sm:p-8">
-          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <div className="text-sm uppercase tracking-[0.24em] text-slate-400">Job Platforms</div>
-              <h2 className="mt-2 text-3xl font-semibold text-white">Connected job platforms</h2>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {platforms.map((platform) => (
-              <span key={platform} className="rounded-full border border-white/10 bg-[#0b0d18] px-4 py-2 text-sm text-slate-300">
-                {platform}
-              </span>
-            ))}
-          </div>
-        </section>
-
-        <section className="mt-24 grid gap-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
-          <div className="rounded-[28px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
-            <div className="text-sm uppercase tracking-[0.24em] text-slate-400">How It Works</div>
-            <h2 className="mt-2 text-3xl font-semibold text-white">4 steps to go from resume to offer</h2>
-            <div className="mt-6 space-y-4">
-              {[
-                'Upload resume (PDF / DOC)',
-                'AI analyzes everything',
-                'Get matched to jobs',
-                'Apply with perfect documents'
-              ].map((step, index) => (
-                <div key={step} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-[#0b0d18] p-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-500/20 font-semibold text-indigo-100">{index + 1}</div>
-                  <div className="text-sm text-slate-200">{step}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div id="tools" className="rounded-[28px] border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
-            <div className="text-sm uppercase tracking-[0.24em] text-slate-400">Testimonials</div>
-            <h2 className="mt-2 text-3xl font-semibold text-white">Students are already using it</h2>
-            <div className="mt-6 grid gap-4">
-              {testimonials.map((item) => (
-                <div key={item.name} className="rounded-2xl border border-white/10 bg-[#0b0d18] p-5">
-                  <p className="text-sm leading-6 text-slate-300">“{item.quote}”</p>
-                  <div className="mt-4 flex items-center justify-between gap-3">
-                    <div>
-                      <div className="font-medium text-white">{item.name}</div>
-                      <div className="text-xs text-slate-400">{item.result}</div>
-                    </div>
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-400/10 text-emerald-200">
-                      <CheckCircle2 className="h-5 w-5" />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-24 rounded-[32px] border border-white/10 bg-gradient-to-r from-indigo-500/20 via-violet-500/20 to-cyan-500/20 p-8 text-center backdrop-blur-xl sm:p-12">
+        {/* CTA Section */}
+        <section className="mt-24 rounded-[32px] border border-white/10 bg-gradient-to-r from-indigo-500/20 via-violet-500/20 to-cyan-500/20 p-12 text-center backdrop-blur-xl">
           <h2 className="text-3xl font-semibold text-white sm:text-4xl">Ready to transform your career?</h2>
-          <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-200">
-            Upload your resume, get instant feedback, and start moving through the full CareerOS flow without paying for a basic career toolkit.
+          <p className="mx-auto mt-4 max-w-2xl text-base text-slate-200">
+            Join students and professionals getting hired faster with AI-powered career tools.
           </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Button size="lg" onClick={() => navigate('/upload')} className="bg-white text-slate-900 hover:bg-slate-100">
-              Analyze My Resume Free
+          <div className="mt-8 flex justify-center gap-3">
+            <Button size="lg" onClick={() => navigate('/register')} className="bg-white text-slate-900 hover:bg-slate-100">
+              Start For Free
             </Button>
             <Button size="lg" variant="outline" onClick={() => navigate('/login')} className="border-white/20 bg-white/5 text-white hover:bg-white/10">
-              Continue to Login
+              Sign In
             </Button>
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-white/10 bg-[#04050f]/80 py-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 text-sm text-slate-400 sm:px-6 lg:px-8 md:flex-row md:items-center md:justify-between">
-          <div>CareerOS · Made with ❤️ for students</div>
-          <div className="flex flex-wrap gap-4">
-            <span>Features</span>
-            <span>Job Board</span>
-            <span>Free Tools</span>
-            <span>Support</span>
-          </div>
+      {/* Footer */}
+      <footer className="border-t border-white/10 bg-[#04050f]/80 py-8 mt-24">
+        <div className="mx-auto max-w-7xl px-4 text-center text-sm text-slate-400 sm:px-6 lg:px-8">
+          <div>SmartAI · AI-Powered Career Platform</div>
+          <div className="mt-2 text-xs text-slate-500">No credit card required. Free forever plan available.</div>
         </div>
       </footer>
     </div>
