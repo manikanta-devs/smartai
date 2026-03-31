@@ -2,6 +2,12 @@ FROM node:20-slim
 
 WORKDIR /app
 
+# Install OpenSSL for Prisma
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openssl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy root package files
 COPY package*.json ./
 
@@ -16,15 +22,12 @@ WORKDIR /app/packages/backend
 RUN npm install
 
 # Build backend
-RUN echo "=== CWD ===" && pwd && echo "=== FILES ===" && ls -la && echo "=== Building with tsc ===" && npx tsc -p tsconfig.json 2>&1 && echo "=== Build complete ===" || echo "=== Build reported error but continuing ===" 
-
-# List what was created for debugging
-RUN echo "=== Checking dist folder ===" && ls -la dist/ 2>&1 || echo "=== No dist folder - will run with ts-node instead ==="
+RUN echo "=== Building with tsc ===" && npx tsc -p tsconfig.json 2>&1 || echo "=== Build reported error but continuing ===" 
 
 # Install ts-node for runtime execution (if dist wasn't created)
 RUN npm install --save-dev ts-node @types/node
 
-# Generate Prisma Client with the correct engine for Alpine + OpenSSL 3.0
+# Generate Prisma Client
 RUN npx prisma generate
 
 # Environment setup
