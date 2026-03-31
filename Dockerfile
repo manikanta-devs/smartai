@@ -40,5 +40,5 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:5000', (r) => {if (r.statusCode !== 404) throw new Error(r.statusCode)})" || exit 1
 
-# Start application - try dist/server.js first, fall back to ts-node
-CMD if [ -f dist/server.js ]; then node dist/server.js; else npx ts-node src/server.ts; fi
+# Run migrations and start application
+CMD npx prisma migrate deploy && (if [ -f dist/server.js ]; then node dist/server.js; else npx ts-node src/server.ts; fi)
