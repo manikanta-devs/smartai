@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/Button";
-import { Briefcase, ArrowLeft, ExternalLink, Filter } from "lucide-react";
+import { ApplicationForm } from "../components/ApplicationForm";
+import { Briefcase, ArrowLeft, ExternalLink, Filter, Heart, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import api from "../lib/api";
 
@@ -15,7 +16,7 @@ interface Job {
   location?: string;
   salary?: string;
   jobType?: string;
-  postedDate?: string;
+  postedDate?: string | Date;
 }
 
 const JOB_PLATFORMS = [
@@ -29,13 +30,93 @@ const JOB_PLATFORMS = [
   { id: "workable", name: "Workable", icon: "⚙️" }
 ];
 
+const DATE_FILTERS = [
+  { id: "all", name: "All" },
+  { id: "today", name: "Today" },
+  { id: "week", name: "This Week" },
+  { id: "month", name: "This Month" }
+];
+
+function getTimeAgo(date: string | Date | undefined): string {
+  if (!date) return "Unknown";
+  
+  const d = new Date(date);
+  const now = new Date();
+  const seconds = Math.floor((now.getTime() - d.getTime()) / 1000);
+  
+  if (seconds < 60) return "Just now";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+  if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+  return d.toLocaleDateString();
+}
+
+function filterJobsByDate(jobs: Job[], filter: string): Job[] {
+  if (filter === "all") return jobs;
+  
+  const now = new Date();
+  return jobs.filter(job => {
+    if (!job.postedDate) return true;
+    const jobDate = new Date(job.postedDate);
+    
+    switch (filter) {
+      case "today":
+        return jobDate.toDateString() === now.toDateString();
+      case "week":
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        return jobDate >= weekAgo;
+      case "month":
+        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        return jobDate >= monthAgo;
+      default:
+        return true;
+    }
+  });
+}
+
 export default function JobsPage() {
   const navigate = useNavigate();
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [role, setRole] = useState("");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [savedJobs, setSavedJobs] = useState<string[]>([]);
+  const [applicationFormOpen, setApplicationFormOpen] = useState(false);
+  const [selectedJobForApplication, setSelectedJobForApplication] = useState<Job | null>(null);
+
+  // Load saved jobs from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem("savedJobs");
+    if (saved) {
+      try {
+        setSavedJobs(JSON.parse(saved));
+      } catch (e) {
+        console.error("Error loading saved jobs:", e);
+      }
+    }
+  }, []);
+
+  // Filter jobs when date filter changes or jobs change
+  useEffect(() => {
+    const filtered = filterJobsByDate(jobs, dateFilter);
+    setFilteredJobs(filtered);
+  }, [jobs, dateFilter]);
+
+  const toggleSaveJob = (jobId: string) => {
+    setSavedJobs(prev => {
+      const updated = prev.includes(jobId) 
+        ? prev.filter(id => id !== jobId)
+        : [...prev, jobId];
+      localStorage.setItem("savedJobs", JSON.stringify(updated));
+      
+      const isSaved = updated.includes(jobId);
+      toast.success(isSaved ? "Job saved!" : "Job removed from saved");
+      return updated;
+    });
+  };
 
   const handleSearchJobs = async () => {
     if (!role.trim()) {
@@ -50,6 +131,7 @@ export default function JobsPage() {
 
     setLoading(true);
     setSearched(true);
+    setDateFilter("all");
 
     try {
       // Call search endpoint
@@ -75,7 +157,8 @@ export default function JobsPage() {
           company: `Company ${idx + 1}`,
           platform: platform.name,
           url: `#`,
-          description: `Click to view ${role} positions on ${platform.name}`
+          description: `Click to view ${role} positions on ${platform.name}`,
+          postedDate: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000)
         }));
       setJobs(mockJobs);
       toast.info("Showing demonstration job results. Check the backend logs.");
@@ -94,6 +177,8 @@ export default function JobsPage() {
     });
   };
 
+  const todayCount = filterJobsByDate(jobs, "today").length;
+
   return (
     <div className="space-y-8">
       <div className="max-w-6xl mx-auto px-0 py-0">
@@ -108,6 +193,10 @@ export default function JobsPage() {
               Job Search
             </h1>
           </div>
+          <Button variant="outline" onClick={() => navigate("/dashboard")} className="text-sm">
+            <Heart className="w-4 h-4 mr-2" />
+            Saved ({savedJobs.length})
+          </Button>
         </div>
 
         {/* Search Form */}
@@ -171,33 +260,67 @@ export default function JobsPage() {
         {searched && (
           <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden backdrop-blur-xl shadow-2xl shadow-indigo-950/20">
             <div className="px-6 py-4 border-b border-white/10 bg-white/5">
-              <h2 className="text-lg font-semibold text-white">
-                Results for "{role}" {jobs.length > 0 && `(${jobs.length} found)`}
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-white">
+                  Results for "{role}" {jobs.length > 0 && `(${jobs.length} found)`}
+                  {todayCount > 0 && <span className="ml-2 text-sm text-cyan-300">🔥 {todayCount} today</span>}
+                </h2>
+              </div>
+
+              {/* Date Filter */}
+              {jobs.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-slate-400" />
+                  <div className="flex gap-2">
+                    {DATE_FILTERS.map(filter => (
+                      <button
+                        key={filter.id}
+                        onClick={() => setDateFilter(filter.id)}
+                        className={`px-3 py-1 rounded text-xs font-medium transition ${
+                          dateFilter === filter.id
+                            ? "bg-cyan-400/20 text-cyan-300 border border-cyan-400/40"
+                            : "bg-white/5 text-slate-400 border border-white/10 hover:border-white/20"
+                        }`}
+                      >
+                        {filter.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {jobs.length === 0 ? (
+            {filteredJobs.length === 0 ? (
               <div className="p-12 text-center">
                 <Briefcase className="w-12 h-12 text-slate-500 mx-auto mb-4" />
-                <p className="text-slate-300 font-medium">No matching jobs found</p>
-                <p className="text-sm text-slate-500 mt-2">Try adjusting your search filters</p>
+                <p className="text-slate-300 font-medium">
+                  {jobs.length === 0 ? "No matching jobs found" : "No jobs in this date range"}
+                </p>
+                <p className="text-sm text-slate-500 mt-2">
+                  {jobs.length === 0 ? "Try adjusting your search filters" : "Try selecting a different date range"}
+                </p>
               </div>
             ) : (
               <div className="divide-y divide-white/10">
-                {jobs.map(job => (
+                {filteredJobs.map(job => (
                   <div key={job.id} className="px-6 py-5 hover:bg-white/5 transition">
                     <div className="flex justify-between items-start gap-4">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-bold text-lg text-white truncate">{job.title}</h3>
-                          <span className="px-2.5 py-1 bg-cyan-400/10 text-cyan-200 text-xs rounded-full font-semibold flex-shrink-0 border border-cyan-400/20">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          <h3 className="font-bold text-lg text-white">{job.title}</h3>
+                          <span className="px-2.5 py-1 bg-cyan-400/10 text-cyan-200 text-xs rounded-full font-semibold border border-cyan-400/20">
                             {job.platform}
                           </span>
+                          {job.postedDate && (
+                            <span className="px-2 py-1 bg-indigo-400/10 text-indigo-200 text-xs rounded font-medium">
+                              {getTimeAgo(job.postedDate)}
+                            </span>
+                          )}
                         </div>
                         
-                        <p className="text-sm font-medium text-slate-300 mb-1">{job.company}</p>
+                        <p className="text-sm font-medium text-slate-300 mb-2">{job.company}</p>
                         
-                        <div className="flex flex-wrap gap-3 text-sm text-slate-400 mb-3">
+                        <div className="flex flex-wrap gap-4 text-sm text-slate-400 mb-3">
                           {job.location && (
                             <span className="flex items-center gap-1">
                               📍 {job.location}
@@ -220,17 +343,41 @@ export default function JobsPage() {
                         )}
                       </div>
 
-                      {job.url && job.url !== "#" && (
+                      <div className="flex gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => toggleSaveJob(job.id)}
+                          className={`p-2 rounded-lg border transition ${
+                            savedJobs.includes(job.id)
+                              ? "bg-red-500/20 text-red-300 border-red-400/40"
+                              : "bg-white/5 text-slate-400 border-white/10 hover:border-white/20"
+                          }`}
+                          title={savedJobs.includes(job.id) ? "Remove from saved" : "Save job"}
+                        >
+                          <Heart className="w-5 h-5" fill="currentColor" />
+                        </button>
+
                         <Button
                           onClick={() => {
-                            window.open(job.url, "_blank");
+                            setSelectedJobForApplication(job);
+                            setApplicationFormOpen(true);
                           }}
-                          className="flex items-center gap-2 flex-shrink-0 bg-gradient-to-r from-indigo-500 to-cyan-500 text-white"
+                          className="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-cyan-500 text-white"
                         >
                           Apply Now
-                          <ExternalLink className="w-4 h-4" />
                         </Button>
-                      )}
+
+                        {job.url && job.url !== "#" && (
+                          <Button
+                            onClick={() => {
+                              window.open(job.url, "_blank");
+                            }}
+                            variant="outline"
+                            className="flex items-center gap-2"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -247,11 +394,31 @@ export default function JobsPage() {
               <li>• Enter a job title or role you're interested in</li>
               <li>• Select the job platforms you want to search</li>
               <li>• We'll search across all selected platforms and show you available positions</li>
-              <li>• Each job links directly to the application page</li>
+              <li>• Save jobs for later and apply directly from each platform</li>
+              <li>• Filter by date to see the latest opportunities</li>
+              <li>• Save your favorite jobs for quick access</li>
+              <li>• Filter by date to see the newest opportunities</li>
             </ul>
           </div>
         )}
       </div>
+
+      {/* Application Form Modal */}
+      {selectedJobForApplication && (
+        <ApplicationForm
+          isOpen={applicationFormOpen}
+          onClose={() => {
+            setApplicationFormOpen(false);
+            setSelectedJobForApplication(null);
+          }}
+          jobId={selectedJobForApplication.id}
+          jobTitle={selectedJobForApplication.title}
+          company={selectedJobForApplication.company}
+          onSuccess={() => {
+            toast.success(`Applied to ${selectedJobForApplication.company}!`);
+          }}
+        />
+      )}
     </div>
   );
 }

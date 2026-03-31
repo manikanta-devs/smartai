@@ -277,3 +277,43 @@ export const adjustResumeForJobEndpoint = async (req: Request, res: Response, ne
     next(error);
   }
 };
+
+/**
+ * Analyze resume content directly (without file upload)
+ * Quick analysis endpoint for preview/testing
+ */
+export const analyzeResumeContent = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) {
+      throw new HttpError(401, "Unauthorized");
+    }
+
+    const { content, fileName } = req.body;
+
+    if (!content || typeof content !== 'string') {
+      throw new HttpError(400, "Resume content is required");
+    }
+
+    // Analyze without saving to database
+    const analysis = await analyzeResumeWithAI(content);
+    const info = extractResumeInfo(content);
+    
+    // Generate temporary ID for this analysis
+    const tempResumeId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        resumeId: tempResumeId,
+        atsScore: analysis.atsScore,
+        overallScore: analysis.overallScore,
+        breakdown: analysis.breakdown,
+        suggestions: analysis.suggestions,
+        skills: info?.skills || [],
+        keywordRecommendations: analysis.keywordRecommendations
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};

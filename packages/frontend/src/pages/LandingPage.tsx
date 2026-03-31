@@ -1,13 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/Button';
-import { ArrowRight, Sparkles, Stars } from 'lucide-react';
-
-const steps = [
-  { number: 1, title: 'Upload Resume', description: 'PDF or Word doc' },
-  { number: 2, title: 'Get ATS Score', description: 'Real feedback on formatting' },
-  { number: 3, title: 'Find Jobs', description: 'Matched to your skills' },
-  { number: 4, title: 'Apply', description: 'With cover letters' }
-];
+import { ArrowRight, Sparkles } from 'lucide-react';
 
 export function LandingPage() {
   const navigate = useNavigate();
@@ -36,117 +29,62 @@ export function LandingPage() {
               Sign In
             </Button>
             <Button onClick={() => navigate('/register')} className="bg-gradient-to-r from-indigo-500 to-cyan-500 text-white hover:from-indigo-400 hover:to-cyan-400">
-              Get Started Free
+              Get Started
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-        {/* Hero */}
-        <section className="grid gap-10 lg:grid-cols-2 lg:items-center mb-24">
-          <div>
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-medium text-cyan-200">
-              <Stars className="h-3.5 w-3.5" />
-              AI-powered career tools
-            </div>
+      <main className="relative mx-auto max-w-4xl px-4 py-20 sm:px-6 lg:px-8">
+        {/* Hero - Minimal */}
+        <section className="text-center">
+          <h1 className="text-5xl font-semibold tracking-tight text-white sm:text-6xl">
+            SmartAI
+            <span className="block bg-gradient-to-r from-indigo-300 via-cyan-300 to-emerald-300 bg-clip-text text-transparent">
+              Career Platform
+            </span>
+          </h1>
 
-            <h1 className="text-5xl font-semibold tracking-tight text-white sm:text-6xl">
-              Land Your
-              <span className="block bg-gradient-to-r from-indigo-300 via-cyan-300 to-emerald-300 bg-clip-text text-transparent">
-                Dream Job
-              </span>
-            </h1>
-
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-              Upload your resume. Get instant ATS score, job matches, cover letters, and everything you need to get hired.
-            </p>
-
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Button size="lg" onClick={() => navigate('/register')} className="bg-gradient-to-r from-indigo-500 via-violet-500 to-cyan-500 text-white shadow-lg shadow-indigo-950/30 hover:from-indigo-400 hover:via-violet-400 hover:to-cyan-400">
-                Start Free — No Credit Card
-              </Button>
-              <Button size="lg" variant="outline" onClick={() => navigate('/login')} className="border-white/10 bg-white/5 text-slate-100 hover:bg-white/10">
-                Already have an account?
-              </Button>
-            </div>
-
-            <div className="mt-10 rounded-2xl border border-white/10 bg-white/5 p-4">
-              <div className="text-sm text-slate-400">What's Included</div>
-              <div className="mt-3 space-y-2 text-sm text-slate-300">
-                <div>✓ ATS score & improvement tips</div>
-                <div>✓ Job recommendations</div>
-                <div>✓ AI resume rewriting</div>
-                <div>✓ Cover letter generator</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right side - simple visual */}
-          <div className="rounded-[32px] border border-white/10 bg-white/5 p-8 backdrop-blur-xl">
-            <div className="space-y-6">
-              <div className="rounded-2xl border border-indigo-400/20 bg-indigo-400/5 p-6">
-                <div className="text-sm font-semibold text-indigo-200 mb-2">Step 1: Upload</div>
-                <div className="text-sm text-slate-300">Drag & drop your resume (PDF or DOC)</div>
-              </div>
-              <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-6">
-                <div className="text-sm font-semibold text-cyan-200 mb-2">Step 2: Analyze</div>
-                <div className="text-sm text-slate-300">AI scans for ATS compatibility & gaps</div>
-              </div>
-              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-6">
-                <div className="text-sm font-semibold text-emerald-200 mb-2">Step 3: Improve</div>
-                <div className="text-sm text-slate-300">Get actionable fixes & job matches</div>
-              </div>
-              <div className="rounded-2xl border border-violet-400/20 bg-violet-400/5 p-6">
-                <div className="text-sm font-semibold text-violet-200 mb-2">Step 4: Apply</div>
-                <div className="text-sm text-slate-300">Create cover letters & track applications</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Process steps */}
-        <section>
-          <div className="mb-12">
-            <h2 className="text-3xl font-semibold text-white">Simple 4-Step Process</h2>
-            <p className="mt-2 text-slate-400">From resume to job offer in under 30 minutes</p>
-          </div>
-          <div className="grid gap-4 md:grid-cols-4">
-            {steps.map(({ number, title, description }) => (
-              <div key={number} className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl hover:border-white/20 transition">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-500/20 font-bold text-indigo-100 mb-4">
-                  {number}
-                </div>
-                <h3 className="font-semibold text-white">{title}</h3>
-                <p className="mt-2 text-sm text-slate-300">{description}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* CTA Section */}
-        <section className="mt-24 rounded-[32px] border border-white/10 bg-gradient-to-r from-indigo-500/20 via-violet-500/20 to-cyan-500/20 p-12 text-center backdrop-blur-xl">
-          <h2 className="text-3xl font-semibold text-white sm:text-4xl">Ready to transform your career?</h2>
-          <p className="mx-auto mt-4 max-w-2xl text-base text-slate-200">
-            Join students and professionals getting hired faster with AI-powered career tools.
+          <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-300">
+            Development Version • Features in Progress
           </p>
-          <div className="mt-8 flex justify-center gap-3">
-            <Button size="lg" onClick={() => navigate('/register')} className="bg-white text-slate-900 hover:bg-slate-100">
-              Start For Free
+
+          <div className="mt-12 flex flex-col gap-3 sm:flex-row justify-center">
+            <Button size="lg" onClick={() => navigate('/dashboard')} className="bg-gradient-to-r from-indigo-500 via-violet-500 to-cyan-500 text-white shadow-lg shadow-indigo-950/30 hover:from-indigo-400 hover:via-violet-400 hover:to-cyan-400">
+              Go to Dashboard
             </Button>
-            <Button size="lg" variant="outline" onClick={() => navigate('/login')} className="border-white/20 bg-white/5 text-white hover:bg-white/10">
+            <Button size="lg" variant="outline" onClick={() => navigate('/login')} className="border-white/10 bg-white/5 text-slate-100 hover:bg-white/10">
               Sign In
             </Button>
+          </div>
+
+          {/* Dev Status Box */}
+          <div className="mt-16 rounded-2xl border border-yellow-400/20 bg-yellow-400/5 p-6 max-w-2xl mx-auto">
+            <div className="text-sm font-semibold text-yellow-200 mb-2">⚠️ Development Mode</div>
+            <div className="text-sm text-slate-300">
+              This platform is currently under active development. Features are being built and tested. Use the dashboard to explore current functionality.
+            </div>
           </div>
         </section>
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-white/10 bg-[#04050f]/80 py-8 mt-24">
-        <div className="mx-auto max-w-7xl px-4 text-center text-sm text-slate-400 sm:px-6 lg:px-8">
-          <div>SmartAI · AI-Powered Career Platform</div>
-          <div className="mt-2 text-xs text-slate-500">No credit card required. Free forever plan available.</div>
+      <footer className="border-t border-white/10 bg-[#04050f]/80 py-8 mt-32">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center text-sm text-slate-400 mb-4">
+            <div>SmartAI Career Platform · Development Version</div>
+          </div>
+          <div className="text-center text-xs text-slate-500 space-y-2">
+            <div>
+              <a href="#" className="hover:text-slate-400 transition">Terms & Conditions</a>
+              {' • '}
+              <a href="#" className="hover:text-slate-400 transition">Privacy Policy</a>
+              {' • '}
+              <a href="#" className="hover:text-slate-400 transition">Contact Us</a>
+            </div>
+            <div>© 2026 SmartAI. All rights reserved. By using this platform, you agree to our terms and conditions.</div>
+          </div>
         </div>
       </footer>
     </div>

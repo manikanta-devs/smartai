@@ -9,12 +9,14 @@ import {
   downloadResume,
   getResumeAsHTML,
   getExtractedData,
-  adjustResumeForJobEndpoint
+  adjustResumeForJobEndpoint,
+  analyzeResumeContent
 } from "./resume.controller";
 
 const router = Router();
 
 router.post("/upload", requireAuth, uploadResumeMiddleware, uploadResume);
+router.post("/analyze", requireAuth, analyzeResumeContent);
 router.get("/", requireAuth, getUserResumes);
 router.get("/:id/download", requireAuth, downloadResume);
 router.get("/:id/preview", requireAuth, getResumeAsHTML);

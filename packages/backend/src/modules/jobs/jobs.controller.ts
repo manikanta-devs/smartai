@@ -11,7 +11,8 @@ const MOCK_JOBS = [
     description: "Build scalable web applications with React and TypeScript",
     requirements: ["React", "TypeScript", "Node.js"],
     salary: "$150K - $200K",
-    type: "Full-time"
+    type: "Full-time",
+    postedDate: new Date(Date.now() - 2 * 60 * 60 * 1000) // 2 hours ago
   },
   {
     title: "Full Stack Developer",
@@ -20,7 +21,8 @@ const MOCK_JOBS = [
     description: "Create innovative products with modern tech stack",
     requirements: ["JavaScript", "Python", "PostgreSQL"],
     salary: "$120K - $160K",
-    type: "Full-time"
+    type: "Full-time",
+    postedDate: new Date(Date.now() - 4 * 60 * 60 * 1000) // 4 hours ago
   },
   {
     title: "Backend Engineer",
@@ -29,7 +31,8 @@ const MOCK_JOBS = [
     description: "Design scalable backend systems",
     requirements: ["Node.js", "Docker", "AWS"],
     salary: "$130K - $180K",
-    type: "Full-time"
+    type: "Full-time",
+    postedDate: new Date(Date.now() - 1 * 60 * 60 * 1000) // 1 hour ago
   },
   {
     title: "DevOps Engineer",
@@ -38,7 +41,8 @@ const MOCK_JOBS = [
     description: "Build and maintain infrastructure",
     requirements: ["Kubernetes", "Terraform", "AWS"],
     salary: "$140K - $190K",
-    type: "Full-time"
+    type: "Full-time",
+    postedDate: new Date(Date.now() - 6 * 60 * 60 * 1000) // 6 hours ago
   },
   {
     title: "Data Scientist",
@@ -47,7 +51,8 @@ const MOCK_JOBS = [
     description: "Develop ML models and analytics",
     requirements: ["Python", "Machine Learning", "SQL"],
     salary: "$160K - $210K",
-    type: "Full-time"
+    type: "Full-time",
+    postedDate: new Date(Date.now() - 12 * 60 * 60 * 1000) // 12 hours ago
   }
 ];
 

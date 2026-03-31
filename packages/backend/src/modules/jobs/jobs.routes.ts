@@ -383,4 +383,162 @@ router.post("/applications/:applicationId/follow-up-suggestions", requireAuth, a
 	}
 });
 
+/**
+ * POST /api/jobs/score
+ * Score a resume against a job description
+ * Direct endpoint for resume-job matching
+ */
+router.post("/score", requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+	try {
+		if (!req.user) throw new HttpError(401, "Unauthorized");
+
+		const { resumeText, jobDescription } = req.body;
+
+		if (!resumeText || typeof resumeText !== 'string') {
+			throw new HttpError(400, "resumeText is required (string)");
+		}
+		if (!jobDescription || typeof jobDescription !== 'string') {
+			throw new HttpError(400, "jobDescription is required (string)");
+		}
+
+		// Score the resume against the job
+		const score = scoreResumeAgainstJob(resumeText, jobDescription);
+
+		res.json({
+			success: true,
+			data: {
+				overallScore: score.overallScore,
+				keywordScore: score.keywordScore,
+				formatScore: score.formatScore,
+				matchedKeywords: score.matchedKeywords || [],
+				missingCritical: score.missingCritical || [],
+				recommendations: score.recommendations || []
+			}
+		});
+	} catch (error) {
+		next(error);
+	}
+});
+
+/**
+ * POST /api/jobs/cover-letter
+ * Generate a cover letter for a specific job
+ */
+router.post("/cover-letter", requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+	try {
+		if (!req.user) throw new HttpError(401, "Unauthorized");
+
+		const { resumeText, jobDescription, company, position } = req.body;
+
+		if (!resumeText) throw new HttpError(400, "resumeText is required");
+		if (!jobDescription) throw new HttpError(400, "jobDescription is required");
+		if (!company) throw new HttpError(400, "company is required");
+		if (!position) throw new HttpError(400, "position is required");
+
+		const letter = await generateCoverLetter({
+			candidateName: "Applicant",
+			jobTitle: position,
+			companyName: company,
+			jobDescription,
+			candidateBackground: {
+				summary: resumeText,
+				yearsExperience: 0,
+				topSkills: [],
+				achievements: []
+			},
+			tone: "balanced"
+		});
+
+		res.json({
+			success: true,
+			data: {
+				coverLetter: letter?.letter || "Cover letter could not be generated",
+				effectiveness: letter ? 75 : 0
+			}
+		});
+	} catch (error) {
+		next(error);
+	}
+});
+
+/**
+ * POST /api/jobs/applications
+ * Record an application submission
+ */
+router.post("/applications", requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+	try {
+		if (!req.user || !req.user.id) throw new HttpError(401, "Unauthorized");
+
+		const { jobId, jobTitle, company, resumeId, coverLetter, customAnswers, status } = req.body;
+
+		if (!jobId) throw new HttpError(400, "jobId is required");
+		if (!jobTitle) throw new HttpError(400, "jobTitle is required");
+		if (!company) throw new HttpError(400, "company is required");
+
+		// Get or create the job in our database
+		let job = await prisma.job.findUnique({ where: { id: jobId } });
+		
+		if (!job) {
+			job = await prisma.job.create({
+				data: {
+					id: jobId,
+					title: jobTitle,
+					company: company,
+					description: "",
+					requirements: "",
+					url: "",
+					location: "",
+					salary: "",
+					type: "FULLTIME"
+				}
+			});
+		}
+
+		// Record the application
+		const application = await prisma.application.create({
+			data: {
+				userId: req.user.id!,
+				jobId: jobId,
+				jobTitle: jobTitle,
+				company: company,
+				status: status || "APPLIED",
+				resumeVersionUsed: resumeId || "",
+				notes: coverLetter || customAnswers ? `Cover Letter:\n${coverLetter}\n\nAnswers:\n${customAnswers}` : undefined,
+				appliedAt: new Date()
+			},
+			include: {
+				user: { select: { id: true, email: true } },
+				job: true
+			}
+		});
+
+		// Record this with applicationTracking service if available
+		try {
+			await recordApplication(req.user.id!, {
+				jobId: jobId,
+				jobTitle: jobTitle,
+				company: company,
+				resumeVersionUsed: resumeId,
+				jobUrl: ""
+			});
+		} catch (error) {
+			logger.warn("Could not record application tracking data:", error);
+		}
+
+		res.json({
+			success: true,
+			data: {
+				applicationId: application.id,
+				jobTitle: application.jobTitle,
+				company: application.company,
+				status: application.status,
+				appliedAt: application.appliedAt,
+				message: `Successfully applied to ${company}!`
+			}
+		});
+	} catch (error) {
+		next(error);
+	}
+});
+
 export default router;
