@@ -43,7 +43,7 @@ router.post(
     }
 
     // Get coach response
-    const userId = (req.user as any)?.userId || (req.user as any)?.id || "";
+    const userId = req.user!.userId;
     if (!userId) {
       return res.status(401).json(createErrorResponse("Unauthorized", []));
     }
@@ -71,7 +71,7 @@ router.get(
   "/conversations",
   requireAuth,
   asyncHandler(async (req: Request, res: Response) => {
-    const conversations = await getUserConversations((req.user as any)?.userId || (req.user as any)?.id || "");
+    const conversations = await getUserConversations(req.user!.userId);
 
     return res.json(
       createSuccessResponse({
@@ -109,7 +109,7 @@ router.delete(
   "/conversations/:conversationId",
   requireAuth,
   asyncHandler(async (req: Request, res: Response) => {
-    await deleteConversation(req.params.conversationId, (req.user as any)?.userId || (req.user as any)?.id || "");
+    await deleteConversation(req.params.conversationId, req.user!.userId);
 
     return res.json(
       createSuccessResponse({

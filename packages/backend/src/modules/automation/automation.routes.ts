@@ -89,7 +89,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const gaps = await prisma.skillGapAnalysis.findMany({
       where: {
-        userId: req.user!.id
+        userId: req.user!.userId
       },
       orderBy: {
         createdAt: "desc"
@@ -152,7 +152,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const alerts = await prisma.resumeAlert.findMany({
       where: {
-        userId: req.user!.userId || req.user!.id,
+        userId: req.user!.userId,
         acknowledged: false
       },
       orderBy: {
@@ -192,7 +192,7 @@ router.post(
       throw new NotFoundError("Alert", req.params.alertId);
     }
 
-    if (alert.userId !== req.user!.id) {
+    if (alert.userId !== req.user!.userId) {
       throw new ForbiddenError("You can only acknowledge your own alerts");
     }
 
@@ -215,7 +215,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const resume = await prisma.resume.findFirst({
       where: {
-        userId: req.user!.id
+        userId: req.user!.userId
       }
     }).catch(() => null);
 
@@ -231,7 +231,7 @@ router.get(
     // Get recommended jobs
     const recommendedJobs = await prisma.jobNotification.findMany({
       where: {
-        userId: req.user!.userId || req.user!.id,
+        userId: req.user!.userId,
         applied: false
       },
       orderBy: {
@@ -304,27 +304,27 @@ router.get(
     // Count various items
     const unresolvedAlerts = await prisma.resumeAlert.count({
       where: {
-        userId: req.user!.id,
+        userId: req.user!.userId,
         acknowledged: false
       }
     }).catch(() => 0);
 
     const skillGaps = await prisma.skillGapAnalysis.findMany({
       where: {
-        userId: req.user!.id
+        userId: req.user!.userId
       }
     }).catch(() => []);
 
     const jobRecommendations = await prisma.jobNotification.count({
       where: {
-        userId: (req.user as any)?.userId || (req.user as any)?.id || "",
+        userId: req.user!.userId,
         notificationSent: false
       }
     }).catch(() => 0);
 
     const pendingFollowUps = await prisma.followUpReminder.count({
       where: {
-        userId: (req.user as any)?.userId || (req.user as any)?.id || ""
+        userId: req.user!.userId
       }
     }).catch(() => 0);
 

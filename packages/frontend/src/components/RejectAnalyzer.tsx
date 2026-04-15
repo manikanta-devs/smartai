@@ -78,7 +78,7 @@ export const RejectAnalyzer = ({
 
     setLoading(true);
     try {
-      const response = await api.post("/api/analysis/rejection", {
+      const response = await api.post("/analysis/rejection", {
         resumeText: resumeText || "",
         jobDescription: jobDesc,
       });

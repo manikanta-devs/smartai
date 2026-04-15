@@ -9,6 +9,7 @@ import { Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 const registerSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
   username: z.string().min(3, "Username must be at least 3 characters"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string(),
@@ -35,6 +36,7 @@ export default function RegisterPage() {
     setApiError('');
     try {
       const regRes = await api.post("/auth/register", {
+        email: data.email,
         username: data.username,
         password: data.password,
         firstName: data.firstName,
@@ -140,6 +142,22 @@ export default function RegisterPage() {
                 {...register("username")}
               />
               {errors.username && <p className="text-xs text-rose-300 mt-1">✕ {errors.username.message}</p>}
+            </div>
+
+            {/* Email */}
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
+                Email <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="email"
+                id="email"
+                required
+                placeholder="you@example.com"
+                className="w-full px-4 py-3 bg-[#04050f] border border-white/10 rounded-lg focus:ring-2 focus:ring-cyan-400 focus:border-transparent outline-none transition text-slate-100 placeholder-slate-500"
+                {...register("email")}
+              />
+              {errors.email && <p className="text-xs text-rose-300 mt-1">✕ {errors.email.message}</p>}
             </div>
 
             {/* Password */}

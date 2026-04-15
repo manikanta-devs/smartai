@@ -25,7 +25,7 @@ router.get(
   "/stats",
   requireAuth,
   asyncHandler(async (req: Request, res: Response) => {
-    const stats = await getCareerStats((req.user as any)?.userId || (req.user as any)?.id || "");
+    const stats = await getCareerStats(req.user!.userId);
 
     return res.json(
       createSuccessResponse({
@@ -43,7 +43,7 @@ router.get(
   "/tasks",
   requireAuth,
   asyncHandler(async (req: Request, res: Response) => {
-    const tasks = await getDailyTasksStatus((req.user as any)?.userId || (req.user as any)?.id || "");
+    const tasks = await getDailyTasksStatus(req.user!.userId);
     const totalPoints = tasks.reduce(
       (sum, t) => sum + (t.completed ? 0 : t.points),
       0
@@ -74,7 +74,7 @@ router.post(
       );
     }
 
-    const result = await completeTask((req.user as any)?.userId || (req.user as any)?.id || "", req.params.taskId);
+    const result = await completeTask(req.user!.userId, req.params.taskId);
 
     return res.json(
       createSuccessResponse({

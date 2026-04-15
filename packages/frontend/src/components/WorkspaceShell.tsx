@@ -139,7 +139,7 @@ export function WorkspaceShell() {
               <div className="flex items-center gap-3">
                 <div className="hidden text-right md:block">
                   <p className="text-sm font-medium text-white">{user.email}</p>
-                  <p className="text-xs text-slate-400">{user.firstName} {user.lastName}</p>
+                  <p className="text-xs text-slate-400">{user.firstName || ''} {user.lastName || ''}</p>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => navigate('/upload')} className="hidden border-white/10 bg-white/5 text-slate-100 hover:bg-white/10 lg:inline-flex">
                   <Upload className="mr-2 h-4 w-4" />

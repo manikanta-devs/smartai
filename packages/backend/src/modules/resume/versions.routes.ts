@@ -36,7 +36,7 @@ router.post(
 
     const version = await saveResumeVersion(
       req.params.resumeId,
-      (req.user as any)?.userId || (req.user as any)?.id || "",
+      req.user!.userId,
       versionName,
       content,
       atsScore,
@@ -91,7 +91,7 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const restored = await restoreResumeVersion(
       req.params.versionId,
-      (req.user as any)?.userId || (req.user as any)?.id || ""
+      req.user!.userId
     );
 
     return res.json(
@@ -134,7 +134,7 @@ router.delete(
   "/:resumeId/versions/:versionId",
   requireAuth,
   asyncHandler(async (req: Request, res: Response) => {
-    await deleteVersion(req.params.versionId, (req.user as any)?.userId || (req.user as any)?.id || "");
+    await deleteVersion(req.params.versionId, req.user!.userId);
 
     return res.json(
       createSuccessResponse({

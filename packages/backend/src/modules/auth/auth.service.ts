@@ -75,22 +75,25 @@ export const registerUser = async (input: RegisterInput) => {
 
 export const loginUser = async (input: LoginInput) => {
   try {
-    const email = input.email.trim().toLowerCase();
+    const identifier = input.identifier.trim().toLowerCase();
     
     let user = await prisma.user.findFirst({
       where: {
-        email: email
+        OR: [
+          { email: identifier },
+          { username: identifier }
+        ]
       }
     });
 
     if (!user) {
-      throw new HttpError(401, "Email or password incorrect");
+      throw new HttpError(401, "Username/email or password incorrect");
     }
 
     // Check password
     const isPasswordValid = await bcrypt.compare(input.password, user.passwordHash);
     if (!isPasswordValid) {
-      throw new HttpError(401, "Email or password incorrect");
+      throw new HttpError(401, "Username/email or password incorrect");
     }
 
     const payload = { userId: user.id, email: user.email, role: user.role } as const;

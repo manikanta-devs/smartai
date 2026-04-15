@@ -467,7 +467,7 @@ router.post("/cover-letter", requireAuth, async (req: Request, res: Response, ne
  */
 router.post("/applications", requireAuth, async (req: Request, res: Response, next: NextFunction) => {
 	try {
-		if (!req.user || !req.user.id) throw new HttpError(401, "Unauthorized");
+		if (!req.user || !req.user.userId) throw new HttpError(401, "Unauthorized");
 
 		const { jobId, jobTitle, company, resumeId, coverLetter, customAnswers, status } = req.body;
 
@@ -497,7 +497,7 @@ router.post("/applications", requireAuth, async (req: Request, res: Response, ne
 		// Record the application
 		const application = await prisma.application.create({
 			data: {
-				userId: req.user.id!,
+				userId: req.user.userId,
 				jobId: jobId,
 				jobTitle: jobTitle,
 				company: company,
@@ -514,7 +514,7 @@ router.post("/applications", requireAuth, async (req: Request, res: Response, ne
 
 		// Record this with applicationTracking service if available
 		try {
-			await recordApplication(req.user.id!, {
+			await recordApplication(req.user.userId, {
 				jobId: jobId,
 				jobTitle: jobTitle,
 				company: company,

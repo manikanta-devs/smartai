@@ -7,10 +7,10 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { logger } from "../common/utils/logger";
 
 // Initialize Gemini AI
-const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
+const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
 if (!apiKey) {
-  logger.warn("⚠️ GOOGLE_GEMINI_API_KEY not set - AI features will be limited");
+  logger.warn("⚠️ GEMINI_API_KEY not set - AI features will be limited");
 }
 
 export const genAI = new GoogleGenerativeAI(apiKey || "");
