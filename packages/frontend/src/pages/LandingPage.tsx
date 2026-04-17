@@ -47,7 +47,7 @@ export function LandingPage() {
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-300">
-            Development Version • Features in Progress
+            Upload your resume, get ATS insights, and move from analysis to job applications in one workflow.
           </p>
 
           <div className="mt-12 flex flex-col gap-3 sm:flex-row justify-center">
@@ -59,11 +59,10 @@ export function LandingPage() {
             </Button>
           </div>
 
-          {/* Dev Status Box */}
-          <div className="mt-16 rounded-2xl border border-yellow-400/20 bg-yellow-400/5 p-6 max-w-2xl mx-auto">
-            <div className="text-sm font-semibold text-yellow-200 mb-2">⚠️ Development Mode</div>
+          <div className="mt-16 rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-6 max-w-2xl mx-auto">
+            <div className="text-sm font-semibold text-cyan-200 mb-2">What you can do now</div>
             <div className="text-sm text-slate-300">
-              This platform is currently under active development. Features are being built and tested. Use the dashboard to explore current functionality.
+              Sign up, upload a resume, review ATS scores, generate improvements, and track jobs from your personal dashboard.
             </div>
           </div>
         </section>
@@ -73,17 +72,10 @@ export function LandingPage() {
       <footer className="border-t border-white/10 bg-[#04050f]/80 py-8 mt-32">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center text-sm text-slate-400 mb-4">
-            <div>SmartAI Career Platform · Development Version</div>
+            <div>SmartAI Career Platform</div>
           </div>
           <div className="text-center text-xs text-slate-500 space-y-2">
-            <div>
-              <a href="#" className="hover:text-slate-400 transition">Terms & Conditions</a>
-              {' • '}
-              <a href="#" className="hover:text-slate-400 transition">Privacy Policy</a>
-              {' • '}
-              <a href="#" className="hover:text-slate-400 transition">Contact Us</a>
-            </div>
-            <div>© 2026 SmartAI. All rights reserved. By using this platform, you agree to our terms and conditions.</div>
+            <div>© 2026 SmartAI. All rights reserved.</div>
           </div>
         </div>
       </footer>

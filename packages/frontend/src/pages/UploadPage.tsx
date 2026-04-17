@@ -44,9 +44,8 @@ export default function UploadPage() {
   const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
-  const [activeMode, setActiveMode] = useState<"file" | "text" | "linkedin">("file");
+  const [activeMode, setActiveMode] = useState<"file" | "text">("file");
   const [resumeText, setResumeText] = useState("");
-  const [linkedinUrl, setLinkedinUrl] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState(0);
@@ -138,18 +137,6 @@ export default function UploadPage() {
       return;
     }
 
-    if (activeMode === "linkedin") {
-      if (!linkedinUrl.trim()) {
-        toast.error("Paste a LinkedIn profile URL first");
-        return;
-      }
-
-      toast.message("LinkedIn import is not wired yet", {
-        description: "Paste your resume text or upload a file for full analysis."
-      });
-      return;
-    }
-
     toast.error("Choose a resume file or paste text before analyzing");
   };
 
@@ -201,7 +188,7 @@ export default function UploadPage() {
               Upload your resume and get instant analysis.
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-              Drop a resume, paste your experience, or use a LinkedIn URL as a starting point. You’ll see your selected file here, then the backend will generate the real analysis after upload.
+              Drop a resume file or paste resume text. You’ll see your selected file here, then the backend will generate real ATS and matching insights after upload.
             </p>
 
             <div className="mt-8 rounded-2xl border border-white/10 bg-[#0b0d18] p-5">
@@ -324,13 +311,12 @@ export default function UploadPage() {
             <div className="mt-6 grid gap-3 sm:grid-cols-3">
               {[
                 { label: "File upload", value: "PDF / DOC / DOCX / TXT", active: activeMode === "file", icon: FileText },
-                { label: "Paste text", value: "Quick copy-paste analysis", active: activeMode === "text", icon: ClipboardPaste },
-                { label: "LinkedIn URL", value: "Profile URL starter", active: activeMode === "linkedin", icon: Link2 }
+                { label: "Paste text", value: "Quick copy-paste analysis", active: activeMode === "text", icon: ClipboardPaste }
               ].map(({ label, value, active, icon: Icon }) => (
                 <button
                   key={label}
                   type="button"
-                  onClick={() => setActiveMode(label === "File upload" ? "file" : label === "Paste text" ? "text" : "linkedin")}
+                  onClick={() => setActiveMode(label === "File upload" ? "file" : "text")}
                   className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition ${active ? "border-cyan-400/30 bg-cyan-400/10" : "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10"}`}
                 >
                   <Icon className={`mt-0.5 h-5 w-5 ${active ? "text-cyan-200" : "text-slate-400"}`} />
@@ -342,58 +328,44 @@ export default function UploadPage() {
               ))}
             </div>
 
+            <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-300">
+              <div className="inline-flex items-center gap-2 font-medium text-slate-200">
+                <Link2 className="h-4 w-4" />
+                LinkedIn import
+              </div>
+              <div className="mt-1 text-slate-400">Coming soon. For now, use file upload or paste text for full analysis.</div>
+            </div>
+
             {activeMode !== "file" ? (
               <div className="mt-6 rounded-[24px] border border-white/10 bg-[#0b0d18] p-5">
-                {activeMode === "text" ? (
-                  <>
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-lg font-semibold text-white">Paste resume text</h3>
-                        <p className="text-sm text-slate-400">Use a clean export or paste the content directly.</p>
-                      </div>
-                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">{sampleSizeLabel}</span>
-                    </div>
-                    <textarea
-                      value={resumeText}
-                      onChange={(event) => setResumeText(event.target.value)}
-                      placeholder="Paste your resume, project summary, skills, and experience here..."
-                      className="min-h-[220px] w-full rounded-2xl border border-white/10 bg-[#04050f] px-4 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-cyan-400/50"
-                    />
-                    <div className="mt-4 flex flex-wrap gap-3">
-                      <Button onClick={handleAnalyze} disabled={uploading} className="bg-gradient-to-r from-indigo-500 to-cyan-500 text-white hover:from-indigo-400 hover:to-cyan-400">
-                        <Wand2 className="mr-2 h-4 w-4" />
-                        Analyze My Resume
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setResumeText(sampleResumeText);
-                          toast.success("Sample resume loaded");
-                        }}
-                      >
-                        Try sample resume
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="mb-3">
-                      <h3 className="text-lg font-semibold text-white">LinkedIn URL</h3>
-                      <p className="text-sm text-slate-400">This is ready for a future profile import flow. For now, paste resume text to analyze immediately.</p>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-                      <input
-                        value={linkedinUrl}
-                        onChange={(event) => setLinkedinUrl(event.target.value)}
-                        placeholder="https://www.linkedin.com/in/your-profile"
-                        className="h-12 rounded-2xl border border-white/10 bg-[#04050f] px-4 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-cyan-400/50"
-                      />
-                      <Button variant="outline" onClick={handleAnalyze} disabled={uploading}>
-                        Check URL
-                      </Button>
-                    </div>
-                  </>
-                )}
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-white">Paste resume text</h3>
+                    <p className="text-sm text-slate-400">Use a clean export or paste the content directly.</p>
+                  </div>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">{sampleSizeLabel}</span>
+                </div>
+                <textarea
+                  value={resumeText}
+                  onChange={(event) => setResumeText(event.target.value)}
+                  placeholder="Paste your resume, project summary, skills, and experience here..."
+                  className="min-h-[220px] w-full rounded-2xl border border-white/10 bg-[#04050f] px-4 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-cyan-400/50"
+                />
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <Button onClick={handleAnalyze} disabled={uploading} className="bg-gradient-to-r from-indigo-500 to-cyan-500 text-white hover:from-indigo-400 hover:to-cyan-400">
+                    <Wand2 className="mr-2 h-4 w-4" />
+                    Analyze My Resume
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setResumeText(sampleResumeText);
+                      toast.success("Sample resume loaded");
+                    }}
+                  >
+                    Try sample resume
+                  </Button>
+                </div>
               </div>
             ) : null}
 
