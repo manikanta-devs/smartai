@@ -1,7 +1,23 @@
 import axios, { AxiosError } from "axios";
 import { useAuthStore } from "../store/auth";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const resolveApiBase = () => {
+  const configuredBase = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL;
+
+  if (!configuredBase) {
+    return "http://localhost:5000/api";
+  }
+
+  const trimmedBase = configuredBase.replace(/\/$/, "");
+
+  if (trimmedBase.endsWith("/api")) {
+    return trimmedBase;
+  }
+
+  return `${trimmedBase}/api`;
+};
+
+const API_BASE = resolveApiBase();
 const PREMIUM_API_BASE = API_BASE;
 
 const api = axios.create({
