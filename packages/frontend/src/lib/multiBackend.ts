@@ -206,8 +206,8 @@ export const rewriteAPI = {
 export const authAPI = {
   register: async (email: string, username: string, password: string, firstName?: string, lastName?: string) =>
     apiExpress.post("/auth/register", { email, username, password, firstName, lastName }),
-  login: async (email: string, password: string) => 
-    apiExpress.post("/auth/login", { email, password }),
+  login: async (identifier: string, password: string) => 
+    apiExpress.post("/auth/login", { identifier, password }),
   logout: async () => apiExpress.post("/auth/logout"),
   me: async () => apiExpress.get("/auth/me"),
   refresh: async (refreshToken: string) => apiExpress.post("/auth/refresh", { refreshToken })

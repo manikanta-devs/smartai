@@ -9,9 +9,12 @@ export const registerSchema = z.object({
 });
 
 export const loginSchema = z.object({
-  email: z.string().email("Must be valid email"),
+  identifier: z.string().min(3, "Username or email must be at least 3 characters"),
   password: z.string().min(6)
-});
+}).transform((data) => ({
+  identifier: data.identifier.trim(),
+  password: data.password
+}));
 
 export const refreshSchema = z.object({
   refreshToken: z.string().min(10).optional()
