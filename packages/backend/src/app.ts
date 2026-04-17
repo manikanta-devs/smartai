@@ -22,17 +22,34 @@ import { loginLimiter, apiLimiter } from "./common/middleware/rateLimiter";
 
 export const app = express();
 
-const allowedOrigins = new Set([
+const configuredOrigins = [
   env.CLIENT_ORIGIN,
+  env.FRONTEND_URL,
+  ...(env.CLIENT_ORIGINS || "").split(",")
+].filter(Boolean) as string[];
+
+const allowedOrigins = new Set([
+  ...configuredOrigins.map((origin) => origin.trim()).filter(Boolean),
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
   "http://localhost:5174",
   "http://127.0.0.1:5174"
 ]);
+
+const isAllowedVercelOrigin = (origin: string) => {
+  try {
+    const hostname = new URL(origin).hostname;
+    return hostname === "vercel.app" || hostname.endsWith(".vercel.app");
+  } catch {
+    return false;
+  }
+};
 
 app.use(helmet());
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.has(origin)) {
+      if (!origin || allowedOrigins.has(origin) || isAllowedVercelOrigin(origin)) {
         return callback(null, true);
       }
 

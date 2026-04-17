@@ -12,6 +12,8 @@ const envSchema = z.object({
   JWT_ACCESS_EXPIRES_IN: z.string().default("15m"),
   JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
   CLIENT_ORIGIN: z.string().default("http://localhost:5174"),
+  FRONTEND_URL: z.string().optional(),
+  CLIENT_ORIGINS: z.string().optional(),
   
   // Gemini AI Configuration (FREE TIER)
   GEMINI_API_KEY: z.string().optional(),
