@@ -83,7 +83,7 @@ export default function RegisterPage() {
               </svg>
             </div>
             <h2 className="text-3xl font-bold text-white">Create Account</h2>
-            <p className="text-slate-400 mt-2">Join us to start analyzing your resume</p>
+            <p className="text-slate-400 mt-2">Create your account to start improving your resume.</p>
           </div>
 
           {/* API Error Message */}
@@ -209,7 +209,7 @@ export default function RegisterPage() {
 
         {/* Footer */}
         <p className="text-center text-slate-400 text-sm mt-6 opacity-90">
-          By signing up, you agree to our Terms of Service and Privacy Policy
+          Your account data stays private and tied to your profile.
         </p>
       </div>
     </div>

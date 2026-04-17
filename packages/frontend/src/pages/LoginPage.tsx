@@ -4,8 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import api from "../lib/api";
 import { useAuthStore } from "../store/auth";
-import { Button } from "../components/Button";
-import { Input } from "../components/Input";
 import { Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -59,7 +57,7 @@ export default function LoginPage() {
               </svg>
             </div>
             <h2 className="text-3xl font-bold text-white">Welcome Back</h2>
-            <p className="text-slate-400 mt-2">Sign in to your account</p>
+            <p className="text-slate-400 mt-2">Sign in to continue your career workflow.</p>
           </div>
 
           {/* Error Messages */}
@@ -133,7 +131,7 @@ export default function LoginPage() {
                   Logging in...
                 </>
               ) : (
-                'Login'
+                'Sign In'
               )}
             </button>
           </form>
@@ -151,7 +149,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="text-center text-slate-400 text-sm mt-6 opacity-90">
-          Keep your credentials safe. Never share your password.
+          Keep your credentials secure. Never share your password.
         </p>
       </div>
     </div>

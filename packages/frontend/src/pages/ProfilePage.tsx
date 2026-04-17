@@ -97,7 +97,7 @@ export default function ProfilePage() {
           <Button variant="outline" size="sm" onClick={() => navigate("/dashboard")}>
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          <h1 className="text-3xl font-bold text-white">My Profile</h1>
+          <h1 className="text-3xl font-bold text-white">Profile Settings</h1>
         </div>
 
         {/* Profile Form */}
@@ -187,14 +187,14 @@ export default function ProfilePage() {
               className="flex items-center gap-2 flex-1"
             >
               <Save className="w-4 h-4" />
-              {saving ? "Saving..." : "Save Profile"}
+              {saving ? "Saving..." : "Save Changes"}
             </Button>
             <Button variant="outline" onClick={() => navigate("/dashboard")}>
-              Cancel
+              Back to Dashboard
             </Button>
             <Button
               variant="outline"
-              className="text-red-600 hover:text-red-700"
+              className="text-rose-200 border-rose-400/30 bg-rose-500/10 hover:bg-rose-500/20"
               onClick={handleLogout}
             >
               <LogOut className="w-4 h-4 mr-1" />
