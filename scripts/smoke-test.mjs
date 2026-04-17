@@ -149,10 +149,22 @@ const run = async () => {
 
     const jobs = await request("/jobs?limit=5", { token: accessToken });
     if (jobs.status === 200 && jobs.data?.success) {
-      const count = Array.isArray(jobs.data?.data) ? jobs.data.data.length : 0;
-      const status = count > 0 ? "PASS" : "WARN";
-      const detail = count > 0 ? `Returned ${count} jobs` : "No jobs returned (API reachable, dataset may be empty)";
-      pushResult("jobs.list", status, detail);
+      let count = Array.isArray(jobs.data?.data) ? jobs.data.data.length : 0;
+
+      if (count === 0) {
+        const seed = await request("/jobs/seed");
+        const afterSeed = await request("/jobs?limit=5", { token: accessToken });
+        count = Array.isArray(afterSeed.data?.data) ? afterSeed.data.data.length : 0;
+
+        if (count > 0) {
+          pushResult("jobs.list", "PASS", `Returned ${count} jobs after auto-seed`);
+        } else {
+          const seedMessage = seed.data?.data?.message || seed.data?.error?.message || "seed unavailable";
+          pushResult("jobs.list", "WARN", `No jobs returned after auto-seed attempt (${seedMessage})`);
+        }
+      } else {
+        pushResult("jobs.list", "PASS", `Returned ${count} jobs`);
+      }
     } else {
       pushResult("jobs.list", "FAIL", jobs.data?.error?.message || `Unexpected status ${jobs.status}`);
     }
