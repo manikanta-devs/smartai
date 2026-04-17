@@ -10,7 +10,8 @@ import {
 	getJobById,
 	seedJobs,
 	applyToJob,
-	getUserApplications
+	getUserApplications,
+	studentSearch
 } from "./jobs.controller";
 import { getExtractedResumeData } from "../../services/resumeExtraction.service";
 import { rewriteResumeForJob, scoreResumeAgainstJob } from "../../services/atsRewriter.service";
@@ -24,6 +25,7 @@ const router = Router();
 
 // ========== EXISTING ROUTES ==========
 router.get("/seed", seedJobs);
+router.post("/student-search", requireAuth, studentSearch);
 router.get("/user/applications", requireAuth, getUserApplications);
 router.post("/search", searchJobsByPayload);
 router.post("/refresh", refreshJobs);

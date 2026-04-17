@@ -14,7 +14,22 @@ export interface JobListing {
   jobType?: string;
 }
 
+const jobCache = new Map<string, { expiresAt: number; value: JobListing[] }>();
+const JOB_CACHE_TTL_MS = 2 * 60 * 1000;
+
+const INDIA_CITIES = ["hyderabad", "bangalore", "bengaluru", "mumbai", "delhi", "pune", "chennai"];
+const NON_INDIA_LOCATION_HINTS = ["usa", "united states", "uk", "united kingdom", "canada", "australia", "europe", "singapore"];
+
+const isIndiaLocation = (location?: string) => {
+  const lower = (location || "").toLowerCase();
+  if (!lower) return true;
+  if (NON_INDIA_LOCATION_HINTS.some((hint) => lower.includes(hint))) return false;
+  if (lower.includes("india") || lower.includes("remote")) return true;
+  return INDIA_CITIES.some((city) => lower.includes(city));
+};
+
 function buildFallbackJobs(role: string, platformLabel: string): JobListing[] {
+  const internship = /intern|fresher|entry/i.test(role);
   const lowerRole = role.toLowerCase();
   const roleHints = lowerRole.includes("frontend") || lowerRole.includes("react")
     ? ["React", "TypeScript", "JavaScript", "CSS", "UI", "testing"]
@@ -29,25 +44,25 @@ function buildFallbackJobs(role: string, platformLabel: string): JobListing[] {
   return [
     {
       id: `${platformLabel.toLowerCase()}-fallback-1`,
-      title: `${role} - Senior Position`,
-      company: "Tech Company",
-      location: "Remote",
+      title: internship ? `${role} Intern` : `${role} - Entry Level`,
+      company: platformLabel === "Internshala" ? "Campus Startup" : "Tech Company India",
+      location: internship ? "Bangalore, India" : "Remote (India)",
       description: `Build production-ready products with ${roleHints.slice(0, 4).join(", ")} and ship measurable improvements for customers.`,
-      salary: "$150K - $200K",
+      salary: internship ? "INR 15k - 30k / month stipend" : "INR 4 LPA - 8 LPA",
       url: "https://example.com",
       platform: platformLabel,
-      jobType: "Full-time"
+      jobType: internship ? "Internship" : "Full-time"
     },
     {
       id: `${platformLabel.toLowerCase()}-fallback-2`,
-      title: `${role} - Mid Level`,
-      company: "Startup",
-      location: "San Francisco, CA",
+      title: internship ? `${role} Trainee` : `${role} - Fresher Role`,
+      company: "Startup India",
+      location: "Hyderabad, India",
       description: `Join a small team working on ${roleHints.slice(0, 4).join(", ")} while improving reliability, user experience, and shipping speed.`,
-      salary: "$120K - $160K",
+      salary: internship ? "INR 10k - 25k / month stipend" : "INR 3.5 LPA - 7 LPA",
       url: "https://example.com",
       platform: platformLabel,
-      jobType: "Full-time"
+      jobType: internship ? "Internship" : "Full-time"
     }
   ];
 }
@@ -70,7 +85,7 @@ export const searchJobsAdzuna = async (role: string): Promise<JobListing[]> => {
     const appId = process.env.ADZUNA_APP_ID || "demo";
     const appKey = process.env.ADZUNA_API_KEY || "demo";
     
-    const response = await axios.get(`https://api.adzuna.com/v1/api/jobs/us/search/1`, {
+    const response = await axios.get(`https://api.adzuna.com/v1/api/jobs/in/search/1`, {
       params: {
         app_id: appId,
         app_key: appKey,
@@ -95,7 +110,7 @@ export const searchJobsAdzuna = async (role: string): Promise<JobListing[]> => {
       platform: "Adzuna",
       postedDate: job.created,
       jobType: job.contract_type
-    }));
+    })).filter((job: JobListing) => isIndiaLocation(job.location));
   } catch (error) {
     if (process.env.DEBUG) {
       logger.debug("Adzuna API fallback", error);
@@ -142,14 +157,15 @@ export const searchJobsRemoteOK = async (role: string): Promise<JobListing[]> =>
         id: job.id,
         title: job.title,
         company: job.company,
-        location: job.location || "Remote",
+        location: "Remote (India)",
         description: job.description || "No description available",
         salary: job.salary || undefined,
         url: job.url,
         platform: "RemoteOK",
         postedDate: job.date_posted,
         jobType: "Remote"
-      }));
+      }))
+      .filter((job: JobListing) => isIndiaLocation(job.location));
   } catch (error) {
     if (process.env.DEBUG) {
       logger.debug("RemoteOK API fallback", error);
@@ -158,23 +174,35 @@ export const searchJobsRemoteOK = async (role: string): Promise<JobListing[]> =>
   }
 };
 
+const searchJobsInternshala = async (role: string): Promise<JobListing[]> => {
+  return buildFallbackJobs(`${role} Intern`, "Internshala");
+};
+
+const searchJobsNaukri = async (role: string): Promise<JobListing[]> => {
+  return buildFallbackJobs(role, "Naukri");
+};
+
 // Fetch jobs from multiple sources based on platform selection
 export const fetchJobsFromPlatforms = async (role: string, platforms: string[]): Promise<JobListing[]> => {
+  const normalizedPlatforms = (platforms || []).map((platform) => platform.toLowerCase()).sort();
+  const cacheKey = `${role.toLowerCase()}::${normalizedPlatforms.join(",")}`;
+  const cached = jobCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value;
+  }
+
   // Map platform names to API functions
   const platformMap: { [key: string]: () => Promise<JobListing[]> } = {
     linkedin: () => searchJobsAdzuna(role),
     indeed: () => searchJobsAdzuna(role),
-    glassdoor: () => searchJobsAdzuna(role),
-    monster: () => searchJobsAdzuna(role),
-    dice: () => searchJobsAdzuna(role),
-    builtin: () => searchJobsAdzuna(role),
-    github: () => searchJobsGithub(role),
+    naukri: () => searchJobsNaukri(role),
+    internshala: () => searchJobsInternshala(role),
     remoteok: () => searchJobsRemoteOK(role),
     adzuna: () => searchJobsAdzuna(role)
   };
 
   // Get fetchers for selected platforms (or use defaults if none specified)
-  const selectedPlatforms = platforms.length > 0 ? platforms : ["adzuna", "remoteok"];
+  const selectedPlatforms = platforms.length > 0 ? platforms : ["linkedin", "naukri", "internshala", "indeed"];
   const fetchers = selectedPlatforms
     .map(p => ({ name: p, fn: platformMap[p.toLowerCase()] }))
     .filter(p => p.fn !== undefined);
@@ -210,15 +238,20 @@ export const fetchJobsFromPlatforms = async (role: string, platforms: string[]):
 
   // If no jobs found, return mock data
   if (allJobs.length === 0) {
-    return buildFallbackJobs(role, "Fallback");
+    const fallback = buildFallbackJobs(role, "Fallback").filter((job) => isIndiaLocation(job.location));
+    jobCache.set(cacheKey, { expiresAt: Date.now() + JOB_CACHE_TTL_MS, value: fallback });
+    return fallback;
   }
 
   // Remove duplicates by title + company
   const seen = new Set<string>();
-  return allJobs.filter((job) => {
+  const filtered = allJobs.filter((job) => {
     const key = `${job.title}-${job.company}`.toLowerCase();
     if (seen.has(key)) return false;
     seen.add(key);
-    return true;
+    return isIndiaLocation(job.location);
   });
+
+  jobCache.set(cacheKey, { expiresAt: Date.now() + JOB_CACHE_TTL_MS, value: filtered });
+  return filtered;
 };

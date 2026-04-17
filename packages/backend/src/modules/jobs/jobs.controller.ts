@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { prisma } from "../../config/prisma";
 import { HttpError } from "../../common/middleware/error.middleware";
 import { fetchJobsFromPlatforms } from "../../services/jobService";
+import { getExtractedResumeData } from "../../services/resumeExtraction.service";
 
 const MOCK_JOBS = [
   {
@@ -55,6 +56,124 @@ const MOCK_JOBS = [
     postedDate: new Date(Date.now() - 12 * 60 * 60 * 1000) // 12 hours ago
   }
 ];
+
+const INDIA_CITIES = ["hyderabad", "bangalore", "bengaluru", "mumbai", "delhi", "pune", "chennai"] as const;
+const RELEVANT_PLATFORMS = ["linkedin", "internshala", "naukri", "indeed", "remoteok"] as const;
+const NON_INDIA_LOCATION_HINTS = ["usa", "united states", "uk", "united kingdom", "canada", "europe", "australia", "singapore"];
+const CACHE_TTL_MS = 2 * 60 * 1000;
+const studentSearchCache = new Map<string, { expiresAt: number; payload: any }>();
+
+type StudentMode = "jobs" | "internships";
+type RelevantPlatform = (typeof RELEVANT_PLATFORMS)[number];
+
+type MatchedJob = {
+  id: string;
+  title: string;
+  company: string;
+  platform: string;
+  location: string;
+  salary?: string;
+  url?: string;
+  description: string;
+  matchScore: number;
+  matchedSkills: string[];
+  missingSkills: string[];
+  whyMatched: string[];
+  mode: StudentMode;
+};
+
+const SKILL_KEYWORDS = [
+  "react", "node", "node.js", "javascript", "typescript", "python", "java", "sql", "mongodb", "postgresql",
+  "aws", "docker", "kubernetes", "html", "css", "tailwind", "express", "next.js", "data analysis", "power bi",
+  "excel", "machine learning", "figma", "ui", "ux", "testing", "api", "git"
+];
+
+const ROLE_SKILL_MAP: Record<string, string[]> = {
+  "Full Stack Developer": ["react", "node", "javascript", "sql", "api"],
+  "Frontend Developer": ["react", "javascript", "typescript", "html", "css"],
+  "Backend Developer": ["node", "express", "sql", "api", "docker"],
+  "Data Analyst": ["sql", "python", "excel", "power bi", "data analysis"],
+  "Software Engineer": ["javascript", "python", "java", "sql", "git"]
+};
+
+const normalizeSkills = (values: string[]) =>
+  Array.from(new Set(values.map((value) => value.trim().toLowerCase()).filter(Boolean)));
+
+const extractSkillsFromText = (text: string) => {
+  const normalized = text.toLowerCase();
+  return SKILL_KEYWORDS.filter((keyword) => normalized.includes(keyword));
+};
+
+const inferModeFromJob = (job: { title?: string; description?: string; type?: string; platform?: string }): StudentMode => {
+  const text = `${job.title || ""} ${job.description || ""} ${job.type || ""} ${job.platform || ""}`.toLowerCase();
+  return text.includes("intern") || text.includes("trainee") ? "internships" : "jobs";
+};
+
+const isIndiaLocation = (location: string) => {
+  const lower = location.toLowerCase();
+  if (NON_INDIA_LOCATION_HINTS.some((hint) => lower.includes(hint))) {
+    return false;
+  }
+  if (lower.includes("india") || lower.includes("remote")) {
+    return true;
+  }
+  return INDIA_CITIES.some((city) => lower.includes(city));
+};
+
+const isIndiaRemote = (location: string) => {
+  const lower = location.toLowerCase();
+  return lower.includes("remote") && !NON_INDIA_LOCATION_HINTS.some((hint) => lower.includes(hint));
+};
+
+const suggestRolesFromSkills = (skills: string[]) => {
+  const skillSet = new Set(skills);
+  return Object.entries(ROLE_SKILL_MAP)
+    .map(([role, roleSkills]) => {
+      const matched = roleSkills.filter((skill) => skillSet.has(skill));
+      const score = Math.round((matched.length / roleSkills.length) * 100);
+      return { role, score, matchedSkills: matched, missingSkills: roleSkills.filter((skill) => !skillSet.has(skill)) };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+};
+
+const buildLearningSuggestions = (missingSkillGroups: string[]) => {
+  const unique = Array.from(new Set(missingSkillGroups)).slice(0, 6);
+  return unique.map((skill) => `Learn ${skill} with beginner projects and interview-focused practice`);
+};
+
+const buildFallbackSuggestions = (inputRole: string, mode: StudentMode) => {
+  const roleText = inputRole || "software engineer";
+  return {
+    similarRoles: [
+      roleText,
+      `${roleText} intern`,
+      "Frontend Developer",
+      "Data Analyst"
+    ],
+    internshipSuggestions: [
+      "Apply on Internshala for fresher-friendly roles",
+      "Prioritize 3-6 month internships with PPO mention"
+    ],
+    upskillingSuggestions: [
+      "Build 2 resume-ready projects focused on your target role",
+      "Strengthen SQL + JavaScript + communication for fresher interviews"
+    ],
+    mode
+  };
+};
+
+const buildSearchCacheKey = (userId: string, body: any) => {
+  const normalized = {
+    role: (body.role || "").toLowerCase().trim(),
+    mode: (body.mode || "jobs").toLowerCase(),
+    city: (body.city || "").toLowerCase(),
+    remoteOnly: Boolean(body.remoteOnly),
+    platforms: Array.isArray(body.platforms) ? body.platforms.map((p: string) => p.toLowerCase()).sort() : []
+  };
+
+  return `${userId}:${JSON.stringify(normalized)}`;
+};
 
 const formatFallbackJobs = () =>
   MOCK_JOBS.map((job, index) => ({
@@ -321,6 +440,137 @@ export const getUserApplications = async (req: Request, res: Response, next: Nex
     });
 
     res.json({ success: true, data: applications });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const studentSearch = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) throw new HttpError(401, "Unauthorized");
+
+    const userId = req.user.userId;
+    const role = (req.body?.role || "Software Engineer").toString().trim();
+    const mode: StudentMode = req.body?.mode === "internships" ? "internships" : "jobs";
+    const city = (req.body?.city || "").toString().trim();
+    const remoteOnly = Boolean(req.body?.remoteOnly);
+    const location = "India";
+
+    const requestedPlatforms: string[] = Array.isArray(req.body?.platforms)
+      ? req.body.platforms.map((p: string) => p.toLowerCase())
+      : [];
+    const selectedPlatforms: RelevantPlatform[] = (requestedPlatforms.length > 0 ? requestedPlatforms : [...RELEVANT_PLATFORMS]).filter(
+      (platform): platform is RelevantPlatform => RELEVANT_PLATFORMS.includes(platform as RelevantPlatform)
+    );
+
+    const cacheKey = buildSearchCacheKey(userId, { role, mode, city, remoteOnly, platforms: selectedPlatforms });
+    const cacheEntry = studentSearchCache.get(cacheKey);
+    if (cacheEntry && cacheEntry.expiresAt > Date.now()) {
+      return res.json({ success: true, data: cacheEntry.payload });
+    }
+
+    const latestResume = await prisma.resume.findFirst({
+      where: { userId },
+      orderBy: { createdAt: "desc" }
+    });
+
+    const extracted = latestResume ? await getExtractedResumeData(latestResume.id) : null;
+    const resumeSkills = normalizeSkills([
+      ...(extracted?.skills || []),
+      ...((extracted?.certifications || []).map((cert) => cert.name || "")),
+      ...extractSkillsFromText(latestResume?.text || "")
+    ]);
+
+    const objectiveText = extracted?.summary || "";
+    const suggestedRoles = suggestRolesFromSkills(resumeSkills);
+    const queryRole = role || suggestedRoles[0]?.role || "Software Engineer";
+
+    const rawJobs = await fetchJobsFromPlatforms(queryRole, selectedPlatforms);
+    const locationFiltered = rawJobs.filter((job) => {
+      const jobLocation = job.location || "India";
+
+      if (!isIndiaLocation(jobLocation)) {
+        return false;
+      }
+
+      if (remoteOnly) {
+        return isIndiaRemote(jobLocation);
+      }
+
+      if (city) {
+        return jobLocation.toLowerCase().includes(city.toLowerCase());
+      }
+
+      return true;
+    });
+
+    const modeFiltered = locationFiltered.filter((job) => inferModeFromJob(job) === mode);
+
+    const rankedJobs: MatchedJob[] = modeFiltered
+      .map((job) => {
+        const jobText = `${job.title} ${job.description} ${job.jobType || ""}`;
+        const requiredSkills = normalizeSkills(extractSkillsFromText(jobText));
+        const matchedSkills = requiredSkills.filter((skill) => resumeSkills.includes(skill));
+        const missingSkills = requiredSkills.filter((skill) => !resumeSkills.includes(skill));
+
+        const titleMatch = job.title.toLowerCase().includes(queryRole.toLowerCase()) ? 30 : 15;
+        const skillMatch = requiredSkills.length > 0 ? Math.round((matchedSkills.length / requiredSkills.length) * 55) : 25;
+        const locationScore = isIndiaLocation(job.location || "") ? 10 : 0;
+        const fresherBoost = mode === "internships" || /fresher|entry|junior|intern/i.test(jobText) ? 5 : 0;
+        const objectiveBoost = objectiveText && job.description.toLowerCase().includes(objectiveText.toLowerCase().split(" ")[0] || "") ? 5 : 0;
+        const matchScore = Math.min(99, titleMatch + skillMatch + locationScore + fresherBoost + objectiveBoost);
+
+        const whyMatched = [
+          matchedSkills.length > 0 ? `${matchedSkills.length} skills matched` : "Role alignment detected",
+          mode === "internships" ? "Internship-friendly profile" : "Entry-level fit",
+          `Location filtered for India${city ? ` (${city})` : ""}`
+        ];
+
+        return {
+          id: job.id,
+          title: job.title,
+          company: job.company,
+          platform: job.platform,
+          location: job.location || "India",
+          salary: job.salary,
+          url: job.url,
+          description: job.description,
+          matchScore,
+          matchedSkills,
+          missingSkills,
+          whyMatched,
+          mode
+        } satisfies MatchedJob;
+      })
+      .sort((a, b) => b.matchScore - a.matchScore);
+
+    const topMissingSkills = rankedJobs.flatMap((job) => job.missingSkills).slice(0, 10);
+    const learningSuggestions = buildLearningSuggestions(topMissingSkills);
+
+    const payload = {
+      context: {
+        userType: "Indian student",
+        location,
+        mode,
+        city: city || null,
+        remoteOnly,
+        queryRole,
+        objective: objectiveText || null
+      },
+      jobs: rankedJobs,
+      recommended: {
+        roles: suggestedRoles,
+        skillsToLearnNext: learningSuggestions
+      },
+      fallback: rankedJobs.length === 0 ? buildFallbackSuggestions(queryRole, mode) : null
+    };
+
+    studentSearchCache.set(cacheKey, {
+      expiresAt: Date.now() + CACHE_TTL_MS,
+      payload
+    });
+
+    res.json({ success: true, data: payload });
   } catch (error) {
     next(error);
   }
