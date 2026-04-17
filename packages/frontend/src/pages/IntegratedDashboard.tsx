@@ -178,8 +178,8 @@ export default function IntegratedDashboard() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="text-sm uppercase tracking-[0.24em] text-slate-400">Dashboard</div>
-            <h1 className="mt-2 text-3xl font-bold text-white">Analyze, optimize, and perfect your resume</h1>
-            <p className="mt-2 max-w-2xl text-slate-400">Everything sits in the same workspace, so upload, rewrite, and job search feel like one flow.</p>
+            <h1 className="mt-2 text-3xl font-bold text-white">Analyze your resume and move faster to interviews</h1>
+            <p className="mt-2 max-w-2xl text-slate-400">Upload once, review your scores, improve weak sections, and move directly into job search.</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <button
@@ -262,7 +262,7 @@ export default function IntegratedDashboard() {
                   </span>
                 ))}
                 {!automationReport?.missingSkills?.length && (
-                  <span className="text-sm text-slate-400">Ready to analyze</span>
+                  <span className="text-sm text-slate-400">No skill gaps detected yet</span>
                 )}
               </div>
             </div>
@@ -331,7 +331,7 @@ export default function IntegratedDashboard() {
               </div>
             ) : resumes.length === 0 ? (
               <p className="text-slate-400 text-center py-8">
-                No resumes yet. Upload one to get started!
+                No resumes yet. Upload a resume to get your first analysis.
               </p>
             ) : (
               <div className="space-y-2">
@@ -373,17 +373,17 @@ export default function IntegratedDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <button onClick={() => handleAnalyzeResume(selectedResume)} disabled={loading} className="bg-gradient-to-r from-indigo-500 to-cyan-500 disabled:opacity-50 text-white px-4 py-3 rounded-lg font-medium flex items-center justify-center gap-2 shadow-lg shadow-indigo-950/20">
                   <Zap className="w-5 h-5" />
-                  Analyze Resume
+                  Analyze
                 </button>
                 
                 <button onClick={() => handlePredictRoles(selectedResume)} disabled={loading} className="bg-gradient-to-r from-violet-500 to-fuchsia-500 disabled:opacity-50 text-white px-4 py-3 rounded-lg font-medium flex items-center justify-center gap-2 shadow-lg shadow-indigo-950/20">
                   <Target className="w-5 h-5" />
-                  Predict Roles
+                  Suggested Roles
                 </button>
                 
                 <button onClick={() => handleATSScore(selectedResume)} disabled={loading} className="bg-gradient-to-r from-emerald-500 to-cyan-500 disabled:opacity-50 text-white px-4 py-3 rounded-lg font-medium flex items-center justify-center gap-2 shadow-lg shadow-indigo-950/20">
                   <TrendingUp className="w-5 h-5" />
-                  ATS Score
+                  ATS Check
                 </button>
               </div>
             )}

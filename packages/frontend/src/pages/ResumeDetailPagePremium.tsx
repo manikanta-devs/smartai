@@ -384,7 +384,7 @@ export function ResumeDetailPagePremium() {
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
             <Loader2 className="w-12 h-12 animate-spin text-blue-500 mx-auto mb-4" />
-            <p className="text-gray-400">Loading your premium analysis...</p>
+            <p className="text-gray-400">Loading your resume workspace...</p>
           </div>
         </div>
       </div>
@@ -434,7 +434,7 @@ export function ResumeDetailPagePremium() {
                 {resume.fileName}
               </h1>
               <p className="text-sm text-gray-400">
-                {fileSizeKB} KB • <span className="text-green-500 font-semibold">COMPLETED</span>
+                {fileSizeKB} KB • <span className="text-green-500 font-semibold">ANALYZED</span>
               </p>
             </div>
           </div>
@@ -605,7 +605,7 @@ export function ResumeDetailPagePremium() {
         {/* AI Feature Lab - Tabbed Section */}
         <div className="glass-dark rounded-2xl p-8 border border-gray-700/50 animate-slide-up" style={{ animationDelay: '600ms' }}>
           <h2 className="text-2xl font-bold text-white mb-6" style={{ fontFamily: 'var(--font-clash)' }}>
-            AI Feature Lab
+            AI Career Toolkit
           </h2>
 
           {/* Tabs */}
@@ -709,7 +709,7 @@ export function ResumeDetailPagePremium() {
                   className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-lg font-semibold flex items-center justify-center gap-2 transition disabled:opacity-50"
                 >
                   <BarChart3 className="w-4 h-4" />
-                  {processingAction === 'auto' ? 'Running Automation...' : 'Run Smart Automation'}
+                  {processingAction === 'auto' ? 'Running automation...' : 'Run Automation Suite'}
                 </button>
                 <button
                   onClick={handleCoverLetter}
@@ -971,21 +971,21 @@ export function ResumeDetailPagePremium() {
                 <div className="flex items-center gap-3 mb-3">
                   <Zap className="w-10 h-10 text-yellow-400" />
                   <div>
-                    <h3 className="text-lg font-semibold text-white">Real Job Matching</h3>
-                    <p className="text-sm text-slate-400">Use the live job board and backend search instead of a placeholder card.</p>
+                    <h3 className="text-lg font-semibold text-white">Live Job Matching</h3>
+                    <p className="text-sm text-slate-400">Open the Jobs workspace to search live listings and track applications.</p>
                   </div>
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                   <Button onClick={() => navigate('/jobs')} className="bg-gradient-to-r from-indigo-500 to-cyan-500 text-white">
-                    Open Job Search
+                    Open Jobs Workspace
                   </Button>
                   <Button onClick={handleAutoRun} variant="outline">
-                    Refresh Match Data
+                    Refresh Match Insights
                   </Button>
                 </div>
               </div>
               <div className="rounded-lg border border-white/10 bg-[#0b0d18] p-4 text-sm text-slate-300">
-                Job search is available in the dedicated Jobs page, which queries the real backend search endpoints.
+                This page focuses on resume improvements. Use the Jobs workspace for live search and application tracking.
               </div>
             </div>
           )}
