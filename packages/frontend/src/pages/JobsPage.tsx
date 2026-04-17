@@ -148,20 +148,9 @@ export default function JobsPage() {
       }
     } catch (error: any) {
       console.error("Error searching jobs:", error);
-      // Fallback with mock data for demonstration
-      const mockJobs: Job[] = JOB_PLATFORMS
-        .filter(p => selectedPlatforms.includes(p.id))
-        .map((platform, idx) => ({
-          id: `${platform.id}-${idx}`,
-          title: `${role} - ${Math.floor(Math.random() * 50) + 1} positions`,
-          company: `Company ${idx + 1}`,
-          platform: platform.name,
-          url: `#`,
-          description: `Click to view ${role} positions on ${platform.name}`,
-          postedDate: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000)
-        }));
-      setJobs(mockJobs);
-      toast.info("Showing demonstration job results. Check the backend logs.");
+      setJobs([]);
+      const backendMsg = error?.response?.data?.error?.message;
+      toast.error(backendMsg || "Job search is currently unavailable. Please try again in a minute.");
     } finally {
       setLoading(false);
     }

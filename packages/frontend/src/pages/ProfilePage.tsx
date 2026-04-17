@@ -2,22 +2,19 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
-import { Textarea } from "../components/Textarea";
-import { ArrowLeft, Mail, Phone, MapPin, Link as LinkIcon, Save, Loader2, LogOut } from "lucide-react";
+import { ArrowLeft, Mail, Save, Loader2, LogOut, UserCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "../store/auth";
 import api from "../lib/api";
 
 interface Profile {
+  id?: string;
   email?: string;
-  fullName?: string;
-  phone?: string;
-  location?: string;
-  bio?: string;
-  linkedIn?: string;
-  github?: string;
-  portfolio?: string;
-  skills?: string[];
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  avatar?: string;
+  role?: string;
 }
 
 export default function ProfilePage() {
@@ -28,16 +25,12 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<Profile>({
     email: user?.email || "",
-    fullName: "",
-    phone: "",
-    location: "",
-    bio: "",
-    linkedIn: "",
-    github: "",
-    portfolio: "",
-    skills: []
+    username: user?.username || "",
+    firstName: user?.firstName || "",
+    lastName: user?.lastName || "",
+    avatar: "",
+    role: user?.role || "FREE"
   });
-  const [skillInput, setSkillInput] = useState("");
 
   useEffect(() => {
     fetchProfile();
@@ -48,11 +41,11 @@ export default function ProfilePage() {
       setLoading(true);
       const response = await api.get("/users/profile");
       if (response.data.data) {
-        setProfile({ ...profile, ...response.data.data });
+        setProfile((prev) => ({ ...prev, ...response.data.data }));
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
-      setProfile(prev => ({ ...prev, email: user?.email || "" }));
+      setProfile((prev) => ({ ...prev, email: user?.email || "" }));
     } finally {
       setLoading(false);
     }
@@ -61,8 +54,16 @@ export default function ProfilePage() {
   const handleSaveProfile = async () => {
     try {
       setSaving(true);
-      const response = await api.put("/users/profile", profile);
+      const payload = {
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        avatar: profile.avatar
+      };
+      const response = await api.put("/users/profile", payload);
       if (response.data.success) {
+        const updated = response.data.data;
+        setProfile((prev) => ({ ...prev, ...updated }));
+        useAuthStore.setState({ user: { ...useAuthStore.getState().user!, ...updated } });
         toast.success("Profile updated successfully!");
       }
     } catch (error) {
@@ -71,28 +72,6 @@ export default function ProfilePage() {
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleAddSkill = () => {
-    if (skillInput.trim()) {
-      const skills = profile.skills || [];
-      if (!skills.includes(skillInput.trim())) {
-        setProfile({
-          ...profile,
-          skills: [...skills, skillInput.trim()]
-        });
-        setSkillInput("");
-      } else {
-        toast.info("Skill already added");
-      }
-    }
-  };
-
-  const handleRemoveSkill = (skill: string) => {
-    setProfile({
-      ...profile,
-      skills: (profile.skills || []).filter(s => s !== skill)
-    });
   };
 
   const handleLogout = () => {
@@ -145,148 +124,59 @@ export default function ProfilePage() {
 
               <div>
                 <label className="block text-sm font-semibold text-slate-300 mb-2">
-                  Full Name
+                  Username
                 </label>
                 <Input
                   type="text"
-                  value={profile.fullName}
-                  onChange={(e) => setProfile({ ...profile, fullName: e.target.value })}
-                  placeholder="John Doe"
+                  value={profile.username || ""}
+                  disabled
+                  className="bg-[#04050f]"
+                />
+                <p className="text-xs text-slate-500 mt-1">Username cannot be changed</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-300 mb-2">
+                  First Name
+                </label>
+                <Input
+                  type="text"
+                  value={profile.firstName || ""}
+                  onChange={(e) => setProfile({ ...profile, firstName: e.target.value })}
+                  placeholder="John"
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-semibold text-slate-300 mb-2">
-                  <Phone className="w-4 h-4 inline mr-2" />
-                  Phone Number
-                </label>
-                <Input
-                  type="tel"
-                  value={profile.phone}
-                  onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                  placeholder="+1 (555) 123-4567"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-2">
-                  <MapPin className="w-4 h-4 inline mr-2" />
-                  Location
+                  Last Name
                 </label>
                 <Input
                   type="text"
-                  value={profile.location}
-                  onChange={(e) => setProfile({ ...profile, location: e.target.value })}
-                  placeholder="San Francisco, CA"
+                  value={profile.lastName || ""}
+                  onChange={(e) => setProfile({ ...profile, lastName: e.target.value })}
+                  placeholder="Doe"
                 />
               </div>
             </div>
           </div>
 
-          {/* Bio */}
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-2xl shadow-indigo-950/20">
-            <h2 className="text-xl font-semibold text-white mb-4">Professional Bio</h2>
-
-            <label className="block text-sm font-semibold text-slate-300 mb-2">
-              About You
-            </label>
-            <Textarea
-              value={profile.bio}
-              onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
-              placeholder="Write a brief bio about yourself and your professional background..."
-              rows={4}
-            />
-          </div>
-
-          {/* Social Links */}
+          {/* Account Snapshot */}
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-2xl shadow-indigo-950/20">
             <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-              <LinkIcon className="w-5 h-5" />
-              Social & Portfolio Links
+              <UserCircle2 className="w-5 h-5" />
+              Account Snapshot
             </h2>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-2">
-                  LinkedIn Profile
-                </label>
-                <Input
-                  type="url"
-                  value={profile.linkedIn}
-                  onChange={(e) => setProfile({ ...profile, linkedIn: e.target.value })}
-                  placeholder="https://linkedin.com/in/username"
-                />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="rounded-xl border border-white/10 bg-[#04050f] p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Plan</p>
+                <p className="mt-2 text-sm text-slate-100">{profile.role || "FREE"}</p>
               </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-2">
-                  GitHub Profile
-                </label>
-                <Input
-                  type="url"
-                  value={profile.github}
-                  onChange={(e) => setProfile({ ...profile, github: e.target.value })}
-                  placeholder="https://github.com/username"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-slate-300 mb-2">
-                  Portfolio Website
-                </label>
-                <Input
-                  type="url"
-                  value={profile.portfolio}
-                  onChange={(e) => setProfile({ ...profile, portfolio: e.target.value })}
-                  placeholder="https://yourportfolio.com"
-                />
+              <div className="rounded-xl border border-white/10 bg-[#04050f] p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Display Name</p>
+                <p className="mt-2 text-sm text-slate-100">{[profile.firstName, profile.lastName].filter(Boolean).join(" ") || "Not set"}</p>
               </div>
             </div>
-          </div>
-
-          {/* Skills */}
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-2xl shadow-indigo-950/20">
-            <h2 className="text-xl font-semibold text-white mb-4">Professional Skills</h2>
-
-            <div className="mb-4">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Add Skills
-              </label>
-              <div className="flex gap-2">
-                <Input
-                  type="text"
-                  value={skillInput}
-                  onChange={(e) => setSkillInput(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && handleAddSkill()}
-                  placeholder="e.g., React, Node.js, Python..."
-                />
-                <Button onClick={handleAddSkill} size="sm" variant="outline">
-                  Add
-                </Button>
-              </div>
-            </div>
-
-            {(profile.skills || []).length > 0 && (
-              <div>
-                <p className="text-sm text-gray-600 mb-3">Your Skills:</p>
-                <div className="flex flex-wrap gap-2">
-                  {(profile.skills || []).map(skill => (
-                    <div
-                      key={skill}
-                      className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium flex items-center gap-2"
-                    >
-                      {skill}
-                      <button
-                        onClick={() => handleRemoveSkill(skill)}
-                        className="ml-1 hover:text-blue-900 font-bold"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Action Buttons */}
