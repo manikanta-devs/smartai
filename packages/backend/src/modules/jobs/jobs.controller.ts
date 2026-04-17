@@ -56,14 +56,41 @@ const MOCK_JOBS = [
   }
 ];
 
+const formatFallbackJobs = () =>
+  MOCK_JOBS.map((job, index) => ({
+    id: `fallback-${index + 1}`,
+    title: job.title,
+    company: job.company,
+    location: job.location,
+    description: job.description,
+    requirements: job.requirements,
+    salary: job.salary,
+    type: job.type,
+    postedDate: job.postedDate,
+    platform: "SmartAI",
+    url: null,
+    createdAt: job.postedDate
+  }));
+
 export const getJobs = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { search, location } = req.query;
 
-    let jobs = await prisma.job.findMany({
-      take: 50,
-      orderBy: { createdAt: "desc" }
-    });
+    let jobs: any[] = [];
+
+    try {
+      jobs = await prisma.job.findMany({
+        take: 50,
+        orderBy: { createdAt: "desc" }
+      });
+    } catch (dbError) {
+      console.error("Job query failed, using fallback jobs:", dbError);
+      jobs = [];
+    }
+
+    if (jobs.length === 0) {
+      jobs = formatFallbackJobs();
+    }
 
     // Filter by search and location if provided
     if (search) {
@@ -106,10 +133,20 @@ export const searchJobs = async (req: Request, res: Response, next: NextFunction
 
     // If no jobs found from APIs, fall back to mock jobs filtered from database
     if (jobs.length === 0) {
-      const dbJobs = await prisma.job.findMany({
-        take: 50,
-        orderBy: { createdAt: "desc" }
-      });
+      let dbJobs: any[] = [];
+
+      try {
+        dbJobs = await prisma.job.findMany({
+          take: 50,
+          orderBy: { createdAt: "desc" }
+        });
+      } catch (dbError) {
+        console.error("Job search DB fallback failed, using static fallback jobs:", dbError);
+      }
+
+      if (dbJobs.length === 0) {
+        dbJobs = formatFallbackJobs();
+      }
 
       const q = role.toLowerCase();
       const filtered = dbJobs.filter(
@@ -120,6 +157,16 @@ export const searchJobs = async (req: Request, res: Response, next: NextFunction
 
       if (filtered.length > 0) {
         return res.json({ success: true, data: filtered });
+      }
+
+      const staticRoleMatches = formatFallbackJobs().filter(
+        (j: any) =>
+          j.title.toLowerCase().includes(role.toLowerCase()) ||
+          j.description.toLowerCase().includes(role.toLowerCase())
+      );
+
+      if (staticRoleMatches.length > 0) {
+        return res.json({ success: true, data: staticRoleMatches });
       }
 
       // Return info message if nothing found
