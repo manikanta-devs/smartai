@@ -117,7 +117,7 @@ export function PremiumAnalysisTab({ resumeId, resumeText, onAnalysisComplete }:
             <div className="flex-1">
               <h3 className="font-semibold text-gray-900 mb-2">Premium Deep Analysis</h3>
               <p className="text-sm text-gray-700 mb-4">
-                Get an elite career strategist analysis with ATS scores, career level assessment, specific improvements, and suggested job titles. Powered by Claude Sonnet.
+                Get an elite career strategist analysis with ATS scores, career level assessment, specific improvements, and suggested job titles. Powered by Google Gemini 1.5 Flash.
               </p>
               <Button
                 onClick={runPremiumAnalysis}

@@ -1,12 +1,39 @@
-import pdfParse from "pdf-parse";
 import mammoth from "mammoth";
+import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
+
+type TextItem = {
+  str?: string;
+};
+
+const parsePdfWithPdfJs = async (buffer: Buffer): Promise<string> => {
+  const loadingTask = pdfjs.getDocument({
+    data: new Uint8Array(buffer)
+  });
+
+  const pdf = await loadingTask.promise;
+  const pageTexts: string[] = [];
+
+  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber);
+    const content = await page.getTextContent();
+    const text = (content.items as TextItem[])
+      .map((item) => item.str || "")
+      .join(" ")
+      .trim();
+
+    if (text) {
+      pageTexts.push(text);
+    }
+  }
+
+  return pageTexts.join("\n");
+};
 
 export const parseResumeFile = async (buffer: Buffer, filename: string): Promise<string> => {
   const ext = filename.split(".").pop()?.toLowerCase();
 
   if (ext === "pdf") {
-    const data = await pdfParse(buffer);
-    return data.text;
+    return parsePdfWithPdfJs(buffer);
   } else if (ext === "docx" || ext === "doc") {
     const result = await mammoth.extractRawText({ buffer });
     return result.value;

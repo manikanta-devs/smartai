@@ -190,37 +190,27 @@ const searchArbeitnow = async (role: string): Promise<JobListing[]> => {
   }
 };
 
-const searchRemotiveRss = async (role: string): Promise<JobListing[]> => {
+const searchRemotiveApi = async (role: string): Promise<JobListing[]> => {
   try {
-    const response = await axios.get("https://remotive.com/remote-jobs/rss", { timeout: 5000 });
-    const xml = response.data || "";
+    const response = await axios.get("https://remotive.com/api/remote-jobs", {
+      params: { search: role },
+      timeout: 5000
+    });
 
-    const itemRegex = /<item>([\s\S]*?)<\/item>/g;
-    const items = Array.from(xml.matchAll(itemRegex)) as RegExpMatchArray[];
-
-    return items
+    const rows = Array.isArray(response.data?.jobs) ? response.data.jobs : [];
+    return rows
       .slice(0, 120)
-      .map((match, index) => {
-        const item = match[1] || "";
-        const title = (item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1] || "").trim();
-        const link = (item.match(/<link>(.*?)<\/link>/)?.[1] || "").trim();
-        const pubDate = (item.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || "").trim();
-        const description = (item.match(/<description><!\[CDATA\[([\s\S]*?)\]\]><\/description>/)?.[1] || "").replace(/<[^>]+>/g, " ").trim();
-
-        if (!title.toLowerCase().includes(role.toLowerCase())) return null;
-        const locationHint = description.toLowerCase().includes("india") ? "India" : "Remote India";
-
-        return normalizeJob({
-          id: `remotive-${index}-${title}`,
-          title,
-          company: "Remotive",
-          location: locationHint,
-          description,
-          url: link,
-          postedDate: pubDate,
-          platform: "RSS"
-        });
-      })
+      .map((job: any) => normalizeJob({
+        id: String(job.id || ""),
+        title: job.title,
+        company: job.company_name || "Unknown Company",
+        location: (job.candidate_required_location || "Remote India").toString(),
+        description: (job.description || "").toString().replace(/<[^>]+>/g, " ").trim(),
+        url: job.url,
+        postedDate: job.publication_date,
+        platform: "Remotive",
+        jobType: job.job_type
+      }))
       .filter((job: JobListing | null): job is JobListing => Boolean(job));
   } catch {
     return [];
@@ -479,7 +469,7 @@ export const aggregateIndiaJobs = async (role: string): Promise<JobListing[]> =>
     searchGoogleJobsViaSerpApi(role),
     searchRapidApiJobs(role),
     searchArbeitnow(role),
-    searchRemotiveRss(role),
+    searchRemotiveApi(role),
     searchJobsAdzuna(role),
     searchJobsRemoteOK(role),
     searchInternships(role)
