@@ -20,6 +20,7 @@ import { buildAutofillPackage, validateAutofillReadiness } from "../../services/
 import { scoreJob, rankJobs, generateApplicationStrategy } from "../../services/jobFilter.service";
 import { generateCoverLetter, scoreCoverLetterEffectiveness } from "../../services/coverLetterGenerator.service";
 import { recordApplication, getApplicationStats, suggestFollowUpActions, generateApplicationReport } from "../../services/applicationTracking.service";
+import { sendApplicationConfirmationEmail } from "../../services/applicationNotification.service";
 import { logger } from "../../common/utils/logger";
 
 const router = Router();
@@ -330,9 +331,48 @@ router.post("/applications/record", requireAuth, async (req: Request, res: Respo
 			throw new HttpError(500, "Failed to record application");
 		}
 
+		const user = await prisma.user.findUnique({
+			where: { id: req.user.userId },
+			select: { email: true, firstName: true, lastName: true }
+		});
+
+		await prisma.jobNotification.create({
+			data: {
+				userId: req.user.userId,
+				jobId,
+				jobTitle,
+				company,
+				matchScore: typeof atsScore === "number" ? atsScore : 75,
+				reason: "manual_apply",
+				notificationSent: true,
+				sentAt: new Date(),
+				clickedAt: new Date(),
+				applied: true
+			}
+		});
+
+		let mailStatus: { sent: boolean; skipped: boolean } = { sent: false, skipped: true };
+		if (user?.email) {
+			mailStatus = await sendApplicationConfirmationEmail({
+				to: user.email,
+				userName: [user.firstName, user.lastName].filter(Boolean).join(" ") || undefined,
+				jobTitle,
+				company,
+				location: location || "India",
+				jobUrl,
+				applicationId: application.id
+			});
+		}
+
 		res.json({
 			success: true,
-			data: application
+			data: {
+				...application,
+				notification: {
+					emailSent: mailStatus.sent,
+					emailSkipped: mailStatus.skipped
+				}
+			}
 		});
 	} catch (error) {
 		next(error);
