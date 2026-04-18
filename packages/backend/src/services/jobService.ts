@@ -16,6 +16,8 @@ export interface JobListing {
 
 const jobCache = new Map<string, { expiresAt: number; value: JobListing[] }>();
 const JOB_CACHE_TTL_MS = 2 * 60 * 1000;
+const AGGREGATOR_CACHE_TTL_MS = 3 * 60 * 1000;
+const aggregatorCache = new Map<string, { expiresAt: number; value: JobListing[] }>();
 
 const INDIA_CITIES = ["hyderabad", "bangalore", "bengaluru", "mumbai", "delhi", "pune", "chennai"];
 const NON_INDIA_LOCATION_HINTS = ["usa", "united states", "uk", "united kingdom", "canada", "australia", "europe", "singapore"];
@@ -26,6 +28,215 @@ const isIndiaLocation = (location?: string) => {
   if (NON_INDIA_LOCATION_HINTS.some((hint) => lower.includes(hint))) return false;
   if (lower.includes("india") || lower.includes("remote")) return true;
   return INDIA_CITIES.some((city) => lower.includes(city));
+};
+
+const isRealApplyLink = (url?: string) => {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  if (lower.includes("example.com")) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" || parsed.protocol === "http:";
+  } catch {
+    return false;
+  }
+};
+
+const looksLikeInternship = (job: Partial<JobListing>) => {
+  const text = `${job.title || ""} ${job.description || ""} ${job.jobType || ""}`.toLowerCase();
+  return text.includes("intern") || text.includes("internship") || text.includes("trainee");
+};
+
+const normalizeJob = (input: Partial<JobListing> & { title?: string; company?: string; location?: string; url?: string }): JobListing | null => {
+  const title = (input.title || "").trim();
+  const company = (input.company || "Unknown Company").trim();
+  const location = (input.location || "India").trim();
+  const url = (input.url || "").trim();
+  const description = (input.description || "No description provided").trim();
+
+  if (!title || !isIndiaLocation(location) || !isRealApplyLink(url)) return null;
+
+  const type = looksLikeInternship(input) ? "Internship" : "Job";
+  return {
+    id: input.id || `${company.toLowerCase().replace(/\s+/g, "-")}-${title.toLowerCase().replace(/\s+/g, "-")}`,
+    title,
+    company,
+    location,
+    description,
+    salary: input.salary,
+    url,
+    platform: input.platform || "Web",
+    postedDate: input.postedDate,
+    jobType: type
+  };
+};
+
+const dedupeJobs = (jobs: JobListing[]) => {
+  const seen = new Set<string>();
+  const output: JobListing[] = [];
+  for (const job of jobs) {
+    const key = `${job.title}|${job.company}|${job.location}`.toLowerCase().replace(/\s+/g, " ").trim();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    output.push(job);
+  }
+  return output;
+};
+
+const parseDate = (value?: string) => {
+  if (!value) return 0;
+  const d = new Date(value);
+  const ts = d.getTime();
+  return Number.isNaN(ts) ? 0 : ts;
+};
+
+const searchGoogleJobsViaSerpApi = async (role: string): Promise<JobListing[]> => {
+  const key = process.env.SERPAPI_KEY;
+  if (!key) return [];
+
+  try {
+    const response = await axios.get("https://serpapi.com/search.json", {
+      params: {
+        engine: "google_jobs",
+        q: `${role} in India`,
+        hl: "en",
+        gl: "in",
+        api_key: key
+      },
+      timeout: 5000
+    });
+
+    const rows = Array.isArray(response.data?.jobs_results) ? response.data.jobs_results : [];
+    return rows
+      .map((job: any) => normalizeJob({
+        id: job.job_id,
+        title: job.title,
+        company: job.company_name,
+        location: job.location || "India",
+        description: job.description,
+        url: job.related_links?.[0]?.link || job.share_link,
+        salary: job.detected_extensions?.salary,
+        postedDate: job.detected_extensions?.posted_at,
+        platform: "Google Jobs"
+      }))
+      .filter((job: JobListing | null): job is JobListing => Boolean(job));
+  } catch {
+    return [];
+  }
+};
+
+const searchRapidApiJobs = async (role: string): Promise<JobListing[]> => {
+  const key = process.env.RAPIDAPI_KEY;
+  if (!key) return [];
+
+  try {
+    const response = await axios.get("https://jsearch.p.rapidapi.com/search", {
+      params: {
+        query: `${role} in India`,
+        num_pages: 1,
+        page: 1
+      },
+      headers: {
+        "x-rapidapi-key": key,
+        "x-rapidapi-host": "jsearch.p.rapidapi.com"
+      },
+      timeout: 6000
+    });
+
+    const rows = Array.isArray(response.data?.data) ? response.data.data : [];
+    return rows
+      .map((job: any) => normalizeJob({
+        id: job.job_id,
+        title: job.job_title,
+        company: job.employer_name,
+        location: `${job.job_city || ""} ${job.job_country || ""}`.trim() || "India",
+        description: job.job_description,
+        salary: job.job_salary,
+        url: job.job_apply_link,
+        postedDate: job.job_posted_at_datetime_utc,
+        platform: "RapidAPI"
+      }))
+      .filter((job: JobListing | null): job is JobListing => Boolean(job));
+  } catch {
+    return [];
+  }
+};
+
+const searchArbeitnow = async (role: string): Promise<JobListing[]> => {
+  try {
+    const response = await axios.get("https://www.arbeitnow.com/api/job-board-api", {
+      timeout: 5000
+    });
+    const rows = Array.isArray(response.data?.data) ? response.data.data : [];
+    return rows
+      .filter((job: any) => {
+        const text = `${job?.title || ""} ${job?.description || ""}`.toLowerCase();
+        return text.includes(role.toLowerCase());
+      })
+      .map((job: any) => normalizeJob({
+        id: job.slug,
+        title: job.title,
+        company: job.company_name,
+        location: Array.isArray(job.location) ? job.location.join(", ") : (job.location || "India"),
+        description: job.description,
+        url: job.url,
+        postedDate: job.created_at,
+        platform: "Arbeitnow",
+        jobType: job.remote ? "Remote" : undefined
+      }))
+      .filter((job: JobListing | null): job is JobListing => Boolean(job));
+  } catch {
+    return [];
+  }
+};
+
+const searchRemotiveRss = async (role: string): Promise<JobListing[]> => {
+  try {
+    const response = await axios.get("https://remotive.com/remote-jobs/rss", { timeout: 5000 });
+    const xml = response.data || "";
+
+    const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+    const items = Array.from(xml.matchAll(itemRegex)) as RegExpMatchArray[];
+
+    return items
+      .slice(0, 120)
+      .map((match, index) => {
+        const item = match[1] || "";
+        const title = (item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/)?.[1] || "").trim();
+        const link = (item.match(/<link>(.*?)<\/link>/)?.[1] || "").trim();
+        const pubDate = (item.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] || "").trim();
+        const description = (item.match(/<description><!\[CDATA\[([\s\S]*?)\]\]><\/description>/)?.[1] || "").replace(/<[^>]+>/g, " ").trim();
+
+        if (!title.toLowerCase().includes(role.toLowerCase())) return null;
+        const locationHint = description.toLowerCase().includes("india") ? "India" : "Remote India";
+
+        return normalizeJob({
+          id: `remotive-${index}-${title}`,
+          title,
+          company: "Remotive",
+          location: locationHint,
+          description,
+          url: link,
+          postedDate: pubDate,
+          platform: "RSS"
+        });
+      })
+      .filter((job: JobListing | null): job is JobListing => Boolean(job));
+  } catch {
+    return [];
+  }
+};
+
+const searchInternships = async (role: string): Promise<JobListing[]> => {
+  const query = `${role} internship`;
+  const [adzunaInterns, remote] = await Promise.all([
+    searchJobsAdzuna(query),
+    searchJobsRemoteOK(query)
+  ]);
+
+  return [...adzunaInterns, ...remote]
+    .map((job) => normalizeJob({ ...job, jobType: "Internship" }))
+    .filter((job: JobListing | null): job is JobListing => Boolean(job));
 };
 
 function buildFallbackJobs(role: string, platformLabel: string): JobListing[] {
@@ -254,4 +465,42 @@ export const fetchJobsFromPlatforms = async (role: string, platforms: string[]):
 
   jobCache.set(cacheKey, { expiresAt: Date.now() + JOB_CACHE_TTL_MS, value: filtered });
   return filtered;
+};
+
+export const aggregateIndiaJobs = async (role: string): Promise<JobListing[]> => {
+  const normalizedRole = role.trim().toLowerCase() || "software engineer";
+  const cacheKey = `agg:${normalizedRole}`;
+  const cached = aggregatorCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value;
+  }
+
+  const providers = [
+    searchGoogleJobsViaSerpApi(role),
+    searchRapidApiJobs(role),
+    searchArbeitnow(role),
+    searchRemotiveRss(role),
+    searchJobsAdzuna(role),
+    searchJobsRemoteOK(role),
+    searchInternships(role)
+  ];
+
+  const settled = await Promise.allSettled(providers);
+  const combined: JobListing[] = [];
+  for (const entry of settled) {
+    if (entry.status === "fulfilled") {
+      combined.push(...entry.value);
+    }
+  }
+
+  const clean = dedupeJobs(
+    combined.filter((job) => isIndiaLocation(job.location) && isRealApplyLink(job.url))
+  ).sort((a, b) => parseDate(b.postedDate) - parseDate(a.postedDate));
+
+  aggregatorCache.set(cacheKey, {
+    expiresAt: Date.now() + AGGREGATOR_CACHE_TTL_MS,
+    value: clean
+  });
+
+  return clean;
 };

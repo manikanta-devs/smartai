@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../../config/prisma";
 import { HttpError } from "../../common/middleware/error.middleware";
-import { fetchJobsFromPlatforms } from "../../services/jobService";
+import { aggregateIndiaJobs, fetchJobsFromPlatforms } from "../../services/jobService";
 import { getExtractedResumeData } from "../../services/resumeExtraction.service";
+import { getGeminiModel } from "../../config/gemini.config";
 
 const MOCK_JOBS = [
   {
@@ -58,13 +59,21 @@ const MOCK_JOBS = [
 ];
 
 const INDIA_CITIES = ["hyderabad", "bangalore", "bengaluru", "mumbai", "delhi", "pune", "chennai"] as const;
-const RELEVANT_PLATFORMS = ["linkedin", "internshala", "naukri", "indeed", "remoteok"] as const;
 const NON_INDIA_LOCATION_HINTS = ["usa", "united states", "uk", "united kingdom", "canada", "europe", "australia", "singapore"];
 const CACHE_TTL_MS = 2 * 60 * 1000;
 const studentSearchCache = new Map<string, { expiresAt: number; payload: any }>();
 
 type StudentMode = "jobs" | "internships";
-type RelevantPlatform = (typeof RELEVANT_PLATFORMS)[number];
+
+type AIResumeProfile = {
+  skills: string[];
+  level: "fresher" | "junior" | "mid" | "senior";
+  preferred_roles: string[];
+  experienceYears: number;
+  projects: string[];
+  education: string[];
+  objective?: string;
+};
 
 type MatchedJob = {
   id: string;
@@ -73,12 +82,22 @@ type MatchedJob = {
   platform: string;
   location: string;
   salary?: string;
-  url?: string;
+  url: string;
+  applyLink: string;
   description: string;
+  type: "Job" | "Internship";
   matchScore: number;
+  scoreBreakdown: {
+    skillsMatch: number;
+    roleMatch: number;
+    experienceMatch: number;
+    locationMatch: number;
+  };
   matchedSkills: string[];
   missingSkills: string[];
+  improvementSuggestion: string;
   whyMatched: string[];
+  postedDate?: string;
   mode: StudentMode;
 };
 
@@ -98,6 +117,8 @@ const ROLE_SKILL_MAP: Record<string, string[]> = {
 
 const normalizeSkills = (values: string[]) =>
   Array.from(new Set(values.map((value) => value.trim().toLowerCase()).filter(Boolean)));
+
+const stripCodeFence = (text: string) => text.replace(/^```json\s*/i, "").replace(/^```/i, "").replace(/```$/i, "").trim();
 
 const extractSkillsFromText = (text: string) => {
   const normalized = text.toLowerCase();
@@ -166,13 +187,98 @@ const buildFallbackSuggestions = (inputRole: string, mode: StudentMode) => {
 const buildSearchCacheKey = (userId: string, body: any) => {
   const normalized = {
     role: (body.role || "").toLowerCase().trim(),
-    mode: (body.mode || "jobs").toLowerCase(),
-    city: (body.city || "").toLowerCase(),
-    remoteOnly: Boolean(body.remoteOnly),
-    platforms: Array.isArray(body.platforms) ? body.platforms.map((p: string) => p.toLowerCase()).sort() : []
+    page: Number(body.page || 1),
+    limit: Number(body.limit || 10)
   };
 
   return `${userId}:${JSON.stringify(normalized)}`;
+};
+
+const inferExperienceLevel = (experienceYears: number): AIResumeProfile["level"] => {
+  if (experienceYears <= 1) return "fresher";
+  if (experienceYears <= 3) return "junior";
+  if (experienceYears <= 6) return "mid";
+  return "senior";
+};
+
+const estimateExperienceYearsFromText = (text: string) => {
+  const match = text.toLowerCase().match(/(\d+)\+?\s+years?/);
+  if (!match) return 0;
+  return Math.min(20, Math.max(0, Number(match[1]) || 0));
+};
+
+const roleTokenSimilarity = (inputRole: string, jobTitle: string) => {
+  const inputTokens = new Set(inputRole.toLowerCase().split(/\s+/).filter(Boolean));
+  const titleTokens = new Set(jobTitle.toLowerCase().split(/\s+/).filter(Boolean));
+  if (inputTokens.size === 0) return 0;
+  let overlap = 0;
+  for (const token of inputTokens) {
+    if (titleTokens.has(token)) overlap += 1;
+  }
+  return Math.round((overlap / inputTokens.size) * 100);
+};
+
+const buildResumeProfile = async (resumeText: string, fallbackSkills: string[], fallbackObjective?: string): Promise<AIResumeProfile> => {
+  const defaultProfile: AIResumeProfile = {
+    skills: normalizeSkills(fallbackSkills),
+    level: "fresher",
+    preferred_roles: [],
+    experienceYears: 0,
+    projects: [],
+    education: [],
+    objective: fallbackObjective || ""
+  };
+
+  if (!process.env.GOOGLE_GEMINI_API_KEY) {
+    return defaultProfile;
+  }
+
+  try {
+    const model = getGeminiModel();
+    const result = await model.generateContent(`Parse the resume and return JSON only with this schema:
+{
+  "skills": string[],
+  "level": "fresher" | "junior" | "mid" | "senior",
+  "preferred_roles": string[],
+  "experienceYears": number,
+  "projects": string[],
+  "education": string[],
+  "objective": string
+}
+
+Rules:
+- Keep only factual extraction from resume text.
+- If unknown, use empty arrays/empty string.
+- Ensure level aligns with experienceYears.
+
+Resume text:\n${resumeText.slice(0, 12000)}
+`);
+
+    const raw = stripCodeFence(result.response.text());
+    const parsed = JSON.parse(raw);
+
+    const profile: AIResumeProfile = {
+      skills: normalizeSkills(Array.isArray(parsed?.skills) ? parsed.skills.map(String) : defaultProfile.skills),
+      level: ["fresher", "junior", "mid", "senior"].includes(parsed?.level) ? parsed.level : inferExperienceLevel(Number(parsed?.experienceYears) || 0),
+      preferred_roles: Array.isArray(parsed?.preferred_roles) ? parsed.preferred_roles.map(String).slice(0, 5) : [],
+      experienceYears: Math.max(0, Number(parsed?.experienceYears) || 0),
+      projects: Array.isArray(parsed?.projects) ? parsed.projects.map(String).slice(0, 8) : [],
+      education: Array.isArray(parsed?.education) ? parsed.education.map(String).slice(0, 6) : [],
+      objective: typeof parsed?.objective === "string" ? parsed.objective : defaultProfile.objective
+    };
+
+    if (profile.skills.length === 0 && defaultProfile.skills.length > 0) {
+      profile.skills = defaultProfile.skills;
+    }
+
+    if (!profile.objective && defaultProfile.objective) {
+      profile.objective = defaultProfile.objective;
+    }
+
+    return profile;
+  } catch {
+    return defaultProfile;
+  }
 };
 
 const formatFallbackJobs = () =>
@@ -451,19 +557,11 @@ export const studentSearch = async (req: Request, res: Response, next: NextFunct
 
     const userId = req.user.userId;
     const role = (req.body?.role || "Software Engineer").toString().trim();
-    const mode: StudentMode = req.body?.mode === "internships" ? "internships" : "jobs";
-    const city = (req.body?.city || "").toString().trim();
-    const remoteOnly = Boolean(req.body?.remoteOnly);
+    const page = Math.max(1, Number(req.body?.page || 1));
+    const limit = Math.min(20, Math.max(5, Number(req.body?.limit || 10)));
     const location = "India";
 
-    const requestedPlatforms: string[] = Array.isArray(req.body?.platforms)
-      ? req.body.platforms.map((p: string) => p.toLowerCase())
-      : [];
-    const selectedPlatforms: RelevantPlatform[] = (requestedPlatforms.length > 0 ? requestedPlatforms : [...RELEVANT_PLATFORMS]).filter(
-      (platform): platform is RelevantPlatform => RELEVANT_PLATFORMS.includes(platform as RelevantPlatform)
-    );
-
-    const cacheKey = buildSearchCacheKey(userId, { role, mode, city, remoteOnly, platforms: selectedPlatforms });
+    const cacheKey = buildSearchCacheKey(userId, { role, page, limit });
     const cacheEntry = studentSearchCache.get(cacheKey);
     if (cacheEntry && cacheEntry.expiresAt > Date.now()) {
       return res.json({ success: true, data: cacheEntry.payload });
@@ -482,48 +580,49 @@ export const studentSearch = async (req: Request, res: Response, next: NextFunct
     ]);
 
     const objectiveText = extracted?.summary || "";
-    const suggestedRoles = suggestRolesFromSkills(resumeSkills);
-    const queryRole = role || suggestedRoles[0]?.role || "Software Engineer";
+    const resumeProfile = await buildResumeProfile(latestResume?.text || "", resumeSkills, objectiveText);
+    const suggestedRoles = suggestRolesFromSkills(resumeProfile.skills);
+    const queryRole = role || resumeProfile.preferred_roles[0] || suggestedRoles[0]?.role || "Software Engineer";
 
-    const rawJobs = await fetchJobsFromPlatforms(queryRole, selectedPlatforms);
-    const locationFiltered = rawJobs.filter((job) => {
-      const jobLocation = job.location || "India";
+    const aggregated = await aggregateIndiaJobs(queryRole);
 
-      if (!isIndiaLocation(jobLocation)) {
-        return false;
-      }
-
-      if (remoteOnly) {
-        return isIndiaRemote(jobLocation);
-      }
-
-      if (city) {
-        return jobLocation.toLowerCase().includes(city.toLowerCase());
-      }
-
-      return true;
-    });
-
-    const modeFiltered = locationFiltered.filter((job) => inferModeFromJob(job) === mode);
-
-    const rankedJobs: MatchedJob[] = modeFiltered
+    const rankedJobs: MatchedJob[] = aggregated
       .map((job) => {
+        const mode: StudentMode = inferModeFromJob({
+          title: job.title,
+          description: job.description,
+          type: job.jobType,
+          platform: job.platform
+        });
         const jobText = `${job.title} ${job.description} ${job.jobType || ""}`;
         const requiredSkills = normalizeSkills(extractSkillsFromText(jobText));
-        const matchedSkills = requiredSkills.filter((skill) => resumeSkills.includes(skill));
-        const missingSkills = requiredSkills.filter((skill) => !resumeSkills.includes(skill));
+        const matchedSkills = requiredSkills.filter((skill) => resumeProfile.skills.includes(skill));
+        const missingSkills = requiredSkills.filter((skill) => !resumeProfile.skills.includes(skill));
 
-        const titleMatch = job.title.toLowerCase().includes(queryRole.toLowerCase()) ? 30 : 15;
-        const skillMatch = requiredSkills.length > 0 ? Math.round((matchedSkills.length / requiredSkills.length) * 55) : 25;
-        const locationScore = isIndiaLocation(job.location || "") ? 10 : 0;
-        const fresherBoost = mode === "internships" || /fresher|entry|junior|intern/i.test(jobText) ? 5 : 0;
-        const objectiveBoost = objectiveText && job.description.toLowerCase().includes(objectiveText.toLowerCase().split(" ")[0] || "") ? 5 : 0;
-        const matchScore = Math.min(99, titleMatch + skillMatch + locationScore + fresherBoost + objectiveBoost);
+        const skillsMatch = requiredSkills.length > 0 ? Math.round((matchedSkills.length / requiredSkills.length) * 100) : 55;
+        const roleMatch = roleTokenSimilarity(queryRole, job.title);
+        const jobRequiredExperience = estimateExperienceYearsFromText(jobText);
+        const experienceGap = Math.abs((resumeProfile.experienceYears || 0) - jobRequiredExperience);
+        const experienceMatch = Math.max(0, 100 - Math.min(80, experienceGap * 18));
+        const locationMatch = isIndiaLocation(job.location || "") ? 100 : 0;
+
+        const formulaScore =
+          skillsMatch * 0.5 +
+          roleMatch * 0.2 +
+          experienceMatch * 0.2 +
+          locationMatch * 0.1;
+
+        const internshipBoost = resumeProfile.level === "fresher" && mode === "internships" ? 8 : 0;
+        const matchScore = Math.min(100, Math.max(0, Math.round(formulaScore + internshipBoost)));
+
+        const improvementSuggestion = missingSkills.length > 0
+          ? `Learn ${missingSkills.slice(0, 2).join(" and ")} to improve match.`
+          : "Strong alignment. Improve projects and interview readiness for faster shortlisting.";
 
         const whyMatched = [
           matchedSkills.length > 0 ? `${matchedSkills.length} skills matched` : "Role alignment detected",
-          mode === "internships" ? "Internship-friendly profile" : "Entry-level fit",
-          `Location filtered for India${city ? ` (${city})` : ""}`
+          mode === "internships" ? "Internship opportunity included" : "Job opportunity included",
+          "Location validated for India-only search"
         ];
 
         return {
@@ -534,15 +633,34 @@ export const studentSearch = async (req: Request, res: Response, next: NextFunct
           location: job.location || "India",
           salary: job.salary,
           url: job.url,
+          applyLink: job.url,
           description: job.description,
+          type: mode === "internships" ? "Internship" : "Job",
           matchScore,
+          scoreBreakdown: {
+            skillsMatch,
+            roleMatch,
+            experienceMatch,
+            locationMatch
+          },
           matchedSkills,
           missingSkills,
+          improvementSuggestion,
           whyMatched,
+          postedDate: job.postedDate,
           mode
         } satisfies MatchedJob;
       })
-      .sort((a, b) => b.matchScore - a.matchScore);
+      .sort((a, b) => {
+        if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore;
+        const bTime = b.postedDate ? new Date(b.postedDate).getTime() : 0;
+        const aTime = a.postedDate ? new Date(a.postedDate).getTime() : 0;
+        return bTime - aTime;
+      });
+
+    const start = (page - 1) * limit;
+    const paginated = rankedJobs.slice(start, start + limit);
+    const hasMore = start + limit < rankedJobs.length;
 
     const topMissingSkills = rankedJobs.flatMap((job) => job.missingSkills).slice(0, 10);
     const learningSuggestions = buildLearningSuggestions(topMissingSkills);
@@ -551,18 +669,29 @@ export const studentSearch = async (req: Request, res: Response, next: NextFunct
       context: {
         userType: "Indian student",
         location,
-        mode,
-        city: city || null,
-        remoteOnly,
+        mode: "mixed",
+        city: null,
+        remoteOnly: false,
         queryRole,
-        objective: objectiveText || null
+        objective: resumeProfile.objective || objectiveText || null,
+        profile: {
+          skills: resumeProfile.skills,
+          level: resumeProfile.level,
+          preferred_roles: resumeProfile.preferred_roles
+        }
       },
-      jobs: rankedJobs,
+      jobs: paginated,
+      pagination: {
+        page,
+        limit,
+        total: rankedJobs.length,
+        hasMore
+      },
       recommended: {
         roles: suggestedRoles,
         skillsToLearnNext: learningSuggestions
       },
-      fallback: rankedJobs.length === 0 ? buildFallbackSuggestions(queryRole, mode) : null
+      fallback: rankedJobs.length === 0 ? buildFallbackSuggestions(queryRole, "jobs") : null
     };
 
     studentSearchCache.set(cacheKey, {
