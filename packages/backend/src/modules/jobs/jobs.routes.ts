@@ -294,10 +294,27 @@ router.post("/applications/record", requireAuth, async (req: Request, res: Respo
 	try {
 		if (!req.user) throw new HttpError(401, "Unauthorized");
 
-		const { jobId, jobTitle, company, jobUrl, atsScore, salaryExpected } = req.body;
+		const { jobId, jobTitle, company, jobUrl, atsScore, salaryExpected, location, type, description } = req.body;
 
 		if (!jobId || !jobTitle || !company) {
 			throw new HttpError(400, "jobId, jobTitle, and company are required");
+		}
+
+		const existingJob = await prisma.job.findUnique({ where: { id: jobId } });
+		if (!existingJob) {
+			await prisma.job.create({
+				data: {
+					id: jobId,
+					title: jobTitle,
+					company,
+					location: (location || "India").toString(),
+					description: (description || "External application").toString(),
+					requirements: JSON.stringify(["internship", "entry-level"]),
+					salary: salaryExpected ? String(salaryExpected) : "",
+					type: (type || "Internship").toString(),
+					url: jobUrl ? String(jobUrl) : ""
+				}
+			});
 		}
 
 		const application = await recordApplication(req.user.userId, {
