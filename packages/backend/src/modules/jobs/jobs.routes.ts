@@ -10,6 +10,7 @@ import {
 	getJobById,
 	seedJobs,
 	applyToJob,
+	applyToExternalInternship,
 	getUserApplications,
 	studentSearch
 } from "./jobs.controller";
@@ -33,6 +34,7 @@ router.get("/search/:role", searchJobs);
 router.get("/", getJobs);
 router.get("/:id", getJobById);
 router.post("/:jobId/apply", requireAuth, applyToJob);
+router.post("/apply-external-internship", requireAuth, applyToExternalInternship);
 
 // ========== NEW ADVANCED ROUTES ==========
 

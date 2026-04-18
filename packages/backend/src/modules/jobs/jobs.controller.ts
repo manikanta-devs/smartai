@@ -578,6 +578,130 @@ export const applyToJob = async (req: Request, res: Response, next: NextFunction
   }
 };
 
+export const applyToExternalInternship = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) throw new HttpError(401, "Unauthorized");
+
+    const title = (req.body?.title || "").toString().trim();
+    const company = (req.body?.company || "").toString().trim();
+    const location = (req.body?.location || "India").toString().trim();
+    const description = (req.body?.description || "External internship application").toString().trim();
+    const applyLink = (req.body?.applyLink || "").toString().trim();
+
+    if (!title || !company || !applyLink) {
+      throw new HttpError(400, "title, company, and applyLink are required");
+    }
+
+    const lowerLink = applyLink.toLowerCase();
+    if (!/^https?:\/\//i.test(applyLink) || lowerLink.includes("example.com")) {
+      throw new HttpError(400, "applyLink must be a real external URL");
+    }
+
+    if (!isIndiaLocation(location)) {
+      throw new HttpError(400, "Only India internships are supported");
+    }
+
+    let job = await prisma.job.findFirst({
+      where: {
+        title,
+        company,
+        url: applyLink
+      }
+    });
+
+    if (!job) {
+      job = await prisma.job.create({
+        data: {
+          title,
+          company,
+          location,
+          description,
+          requirements: JSON.stringify(["internship", "entry-level"]),
+          salary: (req.body?.salary || "").toString().trim() || null,
+          type: "Internship",
+          url: applyLink
+        }
+      });
+    }
+
+    const existing = await prisma.application.findUnique({
+      where: {
+        userId_jobId: {
+          userId: req.user.userId,
+          jobId: job.id
+        }
+      }
+    });
+
+    if (existing) {
+      throw new HttpError(409, "Already applied to this internship");
+    }
+
+    const application = await prisma.application.create({
+      data: {
+        userId: req.user.userId,
+        jobId: job.id,
+        jobTitle: job.title,
+        company: job.company,
+        jobUrl: job.url,
+        status: "APPLIED"
+      }
+    });
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: { email: true, firstName: true, lastName: true }
+    });
+
+    await prisma.jobNotification.create({
+      data: {
+        userId: req.user.userId,
+        jobId: job.id,
+        jobTitle: job.title,
+        company: job.company,
+        matchScore: 80,
+        reason: "external_internship_apply",
+        notificationSent: true,
+        sentAt: new Date(),
+        clickedAt: new Date(),
+        applied: true
+      }
+    });
+
+    let mailStatus: { sent: boolean; skipped: boolean } = { sent: false, skipped: true };
+    if (user?.email) {
+      mailStatus = await sendApplicationConfirmationEmail({
+        to: user.email,
+        userName: [user.firstName, user.lastName].filter(Boolean).join(" ") || undefined,
+        jobTitle: job.title,
+        company: job.company,
+        location: job.location,
+        jobUrl: job.url,
+        applicationId: application.id
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      data: {
+        application,
+        internship: {
+          id: job.id,
+          title: job.title,
+          company: job.company,
+          applyLink: job.url
+        },
+        notification: {
+          emailSent: mailStatus.sent,
+          emailSkipped: mailStatus.skipped
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getUserApplications = async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new HttpError(401, "Unauthorized");
