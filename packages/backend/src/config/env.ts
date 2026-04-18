@@ -14,6 +14,14 @@ const envSchema = z.object({
   CLIENT_ORIGIN: z.string().default("http://localhost:5174"),
   FRONTEND_URL: z.string().optional(),
   CLIENT_ORIGINS: z.string().optional(),
+
+  // Email notifications
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_SECURE: z.string().optional(),
+  EMAIL_FROM: z.string().optional(),
   
   // Gemini AI Configuration (FREE TIER)
   GEMINI_API_KEY: z.string().optional(),

@@ -4,6 +4,7 @@ import { HttpError } from "../../common/middleware/error.middleware";
 import { aggregateIndiaJobs, fetchJobsFromPlatforms } from "../../services/jobService";
 import { getExtractedResumeData } from "../../services/resumeExtraction.service";
 import { getGeminiModel } from "../../config/gemini.config";
+import { sendApplicationConfirmationEmail } from "../../services/applicationNotification.service";
 
 const MOCK_JOBS = [
   {
@@ -529,7 +530,49 @@ export const applyToJob = async (req: Request, res: Response, next: NextFunction
       }
     });
 
-    res.json({ success: true, data: application });
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: { email: true, firstName: true, lastName: true }
+    });
+
+    await prisma.jobNotification.create({
+      data: {
+        userId: req.user.userId,
+        jobId: job.id,
+        jobTitle: job.title,
+        company: job.company,
+        matchScore: 75,
+        reason: "manual_apply",
+        notificationSent: true,
+        sentAt: new Date(),
+        clickedAt: new Date(),
+        applied: true
+      }
+    });
+
+    let mailStatus: { sent: boolean; skipped: boolean } = { sent: false, skipped: true };
+    if (user?.email) {
+      mailStatus = await sendApplicationConfirmationEmail({
+        to: user.email,
+        userName: [user.firstName, user.lastName].filter(Boolean).join(" ") || undefined,
+        jobTitle: job.title,
+        company: job.company,
+        location: job.location,
+        jobUrl: job.url,
+        applicationId: application.id
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        ...application,
+        notification: {
+          emailSent: mailStatus.sent,
+          emailSkipped: mailStatus.skipped
+        }
+      }
+    });
   } catch (error) {
     next(error);
   }
